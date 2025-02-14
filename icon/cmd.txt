@@ -1,0 +1,162 @@
+
+cd keyboards/omni_cs/icon
+qmk painter-convert-graphics -f mono16 -i test.png -o ./generated/
+qmk painter-convert-graphics -f rgb565 -i test.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i omni_logo.gif -o ./generated/
+qmk painter-convert-graphics -f mono16 -i omni_logo.gif -o ./generated/
+
+qmk painter-convert-graphics -f pa16 -i youtube.png -o ./generated/
+
+qmk painter-convert-graphics -f rgb565 -i blender.png -o ./generated/
+qmk painter-convert-graphics -f rgb565 -i github.png -o ./generated/
+qmk painter-convert-graphics -f rgb565 -i kicad.png -o ./generated/
+qmk painter-convert-graphics -f rgb565 -i qmk.png -o ./generated/
+qmk painter-convert-graphics -f rgb565 -i twitter.png -o ./generated/
+qmk painter-convert-graphics -f rgb565 -i vial.png -o ./generated/
+qmk painter-convert-graphics -f rgb565 -i youtube.png -o ./generated/
+qmk painter-convert-graphics -f rgb565 -i non.png -o ./generated/
+
+
+
+
+qmk painter-convert-graphics -f mono2 -i save.png -o ./generated/
+
+qmk painter-convert-graphics -f mono2 -i layer_00.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_01.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_02.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_03.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_04.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_05.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_06.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_07.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_08.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_09.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_10.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_11.png -o ./generated/
+
+
+qmk painter-convert-graphics -f rgb565 -i 230.png -o ./generated/
+
+qmk painter-convert-graphics -f mono2 -i 230.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 000.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 001.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 002.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 003.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 004.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 005.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 006.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 007.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 008.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 009.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 010.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 011.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 012.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 013.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 014.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 015.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 016.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 017.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 018.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 019.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 020.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 021.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 022.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 023.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 024.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 025.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 026.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 027.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 028.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 029.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 030.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 031.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 032.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 033.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 034.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 035.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 036.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 037.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 038.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 039.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 040.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 041.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 042.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 043.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 044.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 045.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 046.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 047.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 048.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 049.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 050.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 051.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 052.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 053.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 054.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 055.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 056.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 057.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 058.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 059.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 060.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 061.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 062.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 063.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 064.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 065.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 066.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 067.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 068.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 069.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 070.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 071.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 072.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 073.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 074.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 075.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 076.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 077.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 078.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 079.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 080.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 081.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 082.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 083.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 084.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 085.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 086.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 087.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 088.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 089.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 090.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 091.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 092.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 093.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 094.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 095.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 096.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 097.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 098.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i 099.png -o ./generated/
+
+
+
+
+
+
+
+
+
+
+
+
+
+qmk painter-convert-graphics --input test.png --output my_image.qgf.h --format rgb565
+qmk painter-convert-graphics --input omni_logo.gif --output omni_logo.qgf.h --format rgb565
+
+qmk painter-convert-graphics -f FORMAT [-o OUTPUT] -i INPUT [-v]
+
+cd keyboards/displaytest/font
+qmk painter-make-font-image --font notoSans.ttf --size 22 -o noto11.png --unicode-glyphs "ĄȽɂɻɣɈʣ"
+qmk painter-convert-font-image --input noto11.png -f mono4 --unicode-glyphs "ĄȽɂɻɣɈʣ"
+a

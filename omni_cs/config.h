@@ -1,0 +1,51 @@
+// Copyright 2025 mass
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#pragma once
+
+#define GP50 50U
+#define GP51 51U
+#define GP52 52U
+#define GP53 53U
+#define GP54 54U
+#define GP55 55U
+#define GP56 56U
+#define GP57 57U
+#define GP58 58U
+#define GP59 59U
+#define GP60 60U
+#define GP61 61U
+
+#define MAX_LCD_LAYER 3
+#define MAX_LCD_CATEGORY 2
+#define KEYCODE_SIZE 72
+
+#define MATRIX_ROWS 32 // 行数
+#define MATRIX_COLS 6 // 列数
+#define MATRIX_ROW_PINS { GP11, GP12, GP13, GP14, GP50, GP51, GP52, GP53, GP54, GP55, GP56, GP57, GP58, GP59, GP60, GP61}
+#define MATRIX_COL_PINS { GP0, GP2, GP3, GP8, GP9, GP10}
+
+#define SPI_DRIVER SPID0
+#define SPI_SCK_PIN GP6
+#define SPI_MISO_PIN GP4
+#define SPI_MOSI_PIN GP7
+
+#define PMW33XX_CS_PINS { GP5, GP1 }
+#define PMW33XX_CLOCK_SPEED 2000000
+// #define POINTING_DEVICE_AUTO_MOUSE_ENABLE
+
+#define CS_PIN GP17
+#define DC_PIN GP16
+#define RST_PIN GP18
+#define BLK_PIN GP19
+#define QUANTUM_PAINTER_SUPPORTS_NATIVE_COLORS TRUE
+#define QUANTUM_PAINTER_NUM_IMAGES 100
+
+#define I2C_DRIVER I2CD0
+#define I2C1_SDA_PIN GP20
+#define I2C1_SCL_PIN GP21
+#define INT_PIN GP22
+#define TOUCH_RST_PIN GP26
+
+#define GC9A01_NUM_DEVICES 1
+
