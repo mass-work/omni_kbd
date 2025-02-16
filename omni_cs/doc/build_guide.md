@@ -248,7 +248,7 @@
     その他の穴はボトムプレートとの間に隙間がある場合など、気になる場合は取り付けてください。  
    <img src="img/build_12_16.jpg" width="400px"> 
 11. 残りのキースイッチ、キーキャップ、トラックボールを取り付けます。  
-   <img src="img/readme_top.jpg" width="400px">
+   <img src="../../img/readme_top.jpg" width="400px">
 
 ---
 ## 完成
