@@ -1,7 +1,7 @@
 #pragma once
 
 #include "quantum.h"
-#include "drivers/cst816t.h" // `cst816t_XY`型が定義されているヘッダーファイル
+#include "../drivers/cst816t.h" // `cst816t_XY`型が定義されているヘッダーファイル
 
 // EEPROMの保存データのアドレス
 #define EEPROM_OMNI_TB (EECONFIG_USER + 0)
@@ -12,11 +12,10 @@
 #define DEFAULT_SLOPE_FACTOR2 70
 
 #define ENABLE_TOUCH_UPFDATE 1 // タッチキー押下時の画面更新 1:有効、0:無効
-// ハードウェアのパラメータのみでは感度がよくないため、ソフトウェアで調整する
 #define LONG_TOUCH_TIME 500
 #define TOUCH_DEBOUNCE_TIME 200
 #define SINGLE_CLICK_TIME 100
-#define SLEEPING_KB_TIME 30000 //300000
+#define SLEEPING_KB_TIME 300000 //300000
 
 typedef enum {
     DISPLAY_MODE_TOUCH_KEY,

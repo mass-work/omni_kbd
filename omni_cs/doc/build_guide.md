@@ -203,7 +203,7 @@
     <img src="img/build_09_08.jpg" width="500px"> 
 
 ### 基板のテスト
-1. [こちら](../build)からomni_cs_00_00_00_vial.uf2のfirmwareをダウンロードします。(数値部分はバージョンによって異なります)  
+1. [こちら](https://github.com/mass-work/omni_kbd/tree/main/omni_cs/build)からomni_cs_00_00_00_vial.uf2のfirmwareをダウンロードします。(数値部分はバージョンによって異なります)  
 2. Raspberry Pi Picoのbootボタンを押しながらUSBにさします。  
 3. 下図の画面が立ち上がったら、ダウンロードしたfirmwareをドラッグアンドドロップで移します。  
     <img src="img/build_10_01.jpg" width="500px"> 
@@ -254,7 +254,7 @@
 ## 完成
 組み立てお疲れさまでした。  
 これでomni CSの完成になります。  
-使い方は[readme](../readme.md)をご確認ください。  
+使い方は[readme](https://github.com/mass-work/omni_kbd/tree/main)をご確認ください。  
 
 ---
 ## 最後に
