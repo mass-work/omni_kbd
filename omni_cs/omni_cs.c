@@ -15,15 +15,32 @@
 #include "eeprom.h"
 #include "usb_main.h"
 #include "usb_driver.h"
-// #include "usb_device_state.h" // スリープの挙動によっては追加。現状は不要
+#include "matrix.h"
 #include "config.h"
 #include "omni_cs.h"
+
 #include "../drivers/pmw33xx_common.h"
 #include "../drivers/cst816t.h"
-#include "../font/noto11.qff.h"
+#include "../customfunc/sleeping_view.h"
 #include "../customfunc/draw_custom.h"
+#include "../customfunc/get_custom_gesture.h"
+#include "../font/noto11.qff.h"
 #include "../icon/omni_image_loader.h"
-#include "matrix.h"
+
+uint16_t draw_matrix_code_rain_timer = 0;
+bool fast_draw_matrix_code_rain = false;
+bool fast_draw_radar_view = false;
+uint16_t draw_radar_view_timer = 0;
+
+uint8_t hue_bg = 0;
+uint8_t sat_bg = 0;
+uint8_t val_bg = 0;
+uint8_t hue_main_color = 255;
+uint8_t sat_main_color = 0;
+uint8_t val_main_color = 255;
+uint8_t hue_sub_color = 255;
+uint8_t sat_sub_color = 0;
+uint8_t val_sub_color = 255;
 
 uint32_t sleeping_timer;
 bool matrix_changed = false;
@@ -34,12 +51,10 @@ bool sleeping_state = false;
 #define MACRO_KEY_COUNT (MACRO_KEY_END - MACRO_KEY_START + 1)
 #define constrain_hid(amt) ((amt) < -127 ? -127 : ((amt) > 127 ? 127 : (amt)))
 
-// pmw3360
 static float accumulated_x = 0.0f;
 static float accumulated_y = 0.0f;
 static float accumulated_h = 0.0f;
 static float accumulated_v = 0.0f;
-// touch display
 static painter_device_t display;
 painter_font_handle_t noto11_font;
 painter_image_handle_t qp_load_image_mem(const void *buffer);
@@ -50,7 +65,6 @@ painter_image_handle_t image_000, image_001, image_002, image_003, image_004, im
 bool is_first_frame = true;  
 bool is_second_frame = true;  
 static deferred_token my_anim;
-// static uint32_t last_update = 0;
 const uint32_t update_interval = 50;  
 uint32_t lcd_current_time = 0;
 uint32_t lcd_fast_res_time = 0;
@@ -62,29 +76,27 @@ uint8_t current_lcd_category = 0;
 point_t home_point = {120, 120};
 point_t circles[] = {{200, 120}, {160, 189}, {80, 189}, {40, 120}, {80, 51}, {160, 51}};
 uint8_t gesture_id = GESTURE_NONE;
-// 描画とタッチ処理
 uint16_t touch_x = 0xFFFF;
 uint16_t touch_y = 0xFFFF;
 void process_touch_trackball_tuning_mode(uint16_t touch_x, uint16_t touch_y);
 static uint16_t long_touch_time = 0;
 static uint16_t last_touch_time = 0;
-// other
+static uint16_t last_swipe_gesture_time = 0;
 uint16_t current_time = 0;
 static uint16_t last_tap_time = 0;
 bool touch_signal = false;
-bool touch_signal_view_updata = false;
+bool touch_signal_view_update = false;
 uint16_t virtual_keycode[KEYCODE_SIZE];
 uint16_t pre_virtual_keycode[KEYCODE_SIZE];
 uint16_t import_keymaps[MATRIX_ROWS / 2][MATRIX_COLS];
 
-// Graph位置
 float speed_adjust1;
 float pre_speed_adjust1;
 int slope_factor1;
 int pre_slope_factor1;
-uint8_t hue1 = 220;
-uint8_t sat1 = 255;
-uint8_t val1 = 255;
+uint8_t hue_tbtune_r = 220;
+uint8_t sat_tbtune_r = 255;
+uint8_t val_tbtune_r = 255;
 uint8_t x_pos1 = 170;
 uint8_t y_pos1 = 110;
 
@@ -92,18 +104,16 @@ float speed_adjust2;
 float pre_speed_adjust2;
 int slope_factor2;
 int pre_slope_factor2;
-uint8_t hue2 = 135;
-uint8_t sat2 = 255;
-uint8_t val2 = 255;
+uint8_t hue_tbtune_l = 135;
+uint8_t sat_tbtune_l = 255;
+uint8_t val_tbtune_l = 255;
 uint8_t x_pos2 = 70;
 uint8_t y_pos2 = 110;
 
-//+-位置
 uint8_t y_pos3 = 70;
 uint8_t y_pos4 = 165;
 static int16_t text1_width, text3_width, text4_width, text5_width, text6_width = 0;
 
-// ディスプレイの初期状態を定義
 display_mode_t display_mode =  DISPLAY_MODE_TOUCH_KEY;
 CalibrationData calibration_data;
 bool enable_touch_update = true;
@@ -215,10 +225,18 @@ painter_image_handle_t* get_img_func(uint16_t keycode) {
 }
 
 void draw_background(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2) {
+    qp_rect(display, x1, y1, x2, y2, hue_bg, sat_bg, val_bg, true);  // HSV: H=0, S=0, V=0 (黒色)
+}
+
+void draw_background_black(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2) {
     qp_rect(display, x1, y1, x2, y2, 0, 0, 0, true);  // HSV: H=0, S=0, V=0 (黒色)
 }
 
 void draw_background_all(void) {
+    qp_rect(display, 0, 0, 240, 240, hue_bg, sat_bg, val_bg, true);  // HSV: H=0, S=0, V=0 (黒色)
+}
+
+void draw_background_all_black(void) {
     qp_rect(display, 0, 0, 240, 240, 0, 0, 0, true);  // HSV: H=0, S=0, V=0 (黒色)
 }
 
@@ -251,7 +269,7 @@ void update_lcd_layer_category_by_gesture(void) {
         case CST816S_SLIDE_RIGHT:
             if (current_lcd_layer < MAX_LCD_LAYER) {
                 current_lcd_layer++;
-                draw_background_all();
+                draw_background_all_black();
                 draw_lcd_layer_category_images();
             } else {
                 current_lcd_layer = MAX_LCD_LAYER; 
@@ -261,7 +279,7 @@ void update_lcd_layer_category_by_gesture(void) {
         case CST816S_SLIDE_LEFT:
             if (current_lcd_layer > 0) {
                 current_lcd_layer--;
-                draw_background_all();
+                draw_background_all_black();
                 draw_lcd_layer_category_images();
             } else {
                 current_lcd_layer = 0; 
@@ -271,7 +289,7 @@ void update_lcd_layer_category_by_gesture(void) {
         case CST816S_SLIDE_UP:
             if (current_lcd_category > 0) {
                 current_lcd_category--;
-                draw_background_all();
+                draw_background_all_black();
                 draw_lcd_layer_category_images();
             } else {
                 current_lcd_category = 0;
@@ -281,7 +299,7 @@ void update_lcd_layer_category_by_gesture(void) {
         case CST816S_SLIDE_DOWN:
             if (current_lcd_category < MAX_LCD_CATEGORY) {
                 current_lcd_category++;
-                draw_background_all();
+                draw_background_all_black();
                 draw_lcd_layer_category_images();
             } else {
                 current_lcd_category = MAX_LCD_CATEGORY; 
@@ -292,6 +310,190 @@ void update_lcd_layer_category_by_gesture(void) {
             break;
     }
 }
+    
+int swipe_layer = 0;
+void change_swipe_layer(void) {
+    swipe_layer = (swipe_layer + 1) % 4;
+}
+
+
+const char* get_layer_name(uint8_t layer) {
+    switch (layer) {
+        case 0:
+            return "BASE";
+        case 1:
+            return "NUM ";
+        case 2:
+            return "SYMB";
+        case 3:
+            return "USER";
+        default:
+            return "Unkn";
+    }
+}
+
+void swipe_gesture_main_view_update(uint8_t current_layer) {
+    const char *layer_text = get_layer_name(current_layer);
+    uint16_t layer_text_width = qp_textwidth(noto11_font, layer_text);
+    draw_background(90, 110, 150, 130); 
+    qp_drawtext_recolor(display, 120 - layer_text_width / 2, 120 - noto11_font->line_height / 2, noto11_font, layer_text, hue_main_color, sat_main_color, val_main_color, hue_bg, sat_bg, val_bg);
+    qp_flush(display);  
+}
+
+void swipe_gesture_base_view_update(void) {
+    qp_donut(display, 120, 120, 117, 4, hue_main_color, sat_main_color, 50, val_main_color);
+    qp_donut(display, 120, 120, 114, 4, hue_main_color, sat_main_color, val_main_color, 50);
+    qp_circle(display, 90 , 190, 5, hue_sub_color, sat_sub_color, val_sub_color, false);
+    qp_circle(display, 110, 190, 5, hue_sub_color, sat_sub_color, val_sub_color, false);
+    qp_circle(display, 130, 190, 5, hue_sub_color, sat_sub_color, val_sub_color, false);
+    qp_circle(display, 150, 190, 5, hue_sub_color, sat_sub_color, val_sub_color, false);
+}
+
+void swipe_gesture_view_update(char *text_r, char *text_l, char *text_u, uint8_t x1, uint8_t x2) {
+    uint8_t text_width_r = qp_textwidth(noto11_font, text_r);
+    uint8_t text_width_L = qp_textwidth(noto11_font, text_l);
+    uint8_t text_width_U = qp_textwidth(noto11_font, text_u);
+    uint8_t text_hight = noto11_font->line_height;
+    draw_background(150, 120 - text_hight / 2, 230, 120 + text_hight / 2);  
+    draw_background(10 , 120 - text_hight / 2, 90 , 120 + text_hight / 2); 
+    draw_background(80 , 40  - text_hight / 2, 160, 40  + text_hight / 2); 
+    qp_drawtext_recolor(display, 190 - text_width_r / 2, 120 - text_hight / 2, noto11_font, text_r, hue_main_color, sat_main_color, val_main_color, hue_bg, sat_bg, val_bg);
+    qp_drawtext_recolor(display, 50  - text_width_L / 2, 120 - text_hight / 2, noto11_font, text_l, hue_main_color, sat_main_color, val_main_color, hue_bg, sat_bg, val_bg);
+    qp_drawtext_recolor(display, 120 - text_width_U / 2, 40  - text_hight / 2, noto11_font, text_u, hue_main_color, sat_main_color, val_main_color, hue_bg, sat_bg, val_bg);
+    qp_circle(display, x1, 190, 5, hue_sub_color, sat_sub_color, val_sub_color, true);
+    qp_circle(display, x2, 190, 4, hue_bg, sat_bg, val_bg, true);
+    qp_flush(display);
+}
+
+void swipe_gesture_layer_view_update(void){
+    switch (swipe_layer) {
+        case 0:
+            swipe_gesture_view_update("NEXT", "BACK", "Save", 90, 150);
+            break;
+        case 1:
+            swipe_gesture_view_update("PG>", "<PG", "NEW", 110, 90);
+            break;  
+        case 2:
+            swipe_gesture_view_update("VD>", "<VD", "VDNEW", 130, 110);
+            break;
+        case 3:
+            swipe_gesture_view_update("CST1", "CST2", "CST3", 150, 130);
+            break;
+        default:
+            break;
+    }
+}
+
+void swipe_gesture_process(void) {
+    if (timer_elapsed(last_swipe_gesture_time) > SWIPE_GESTURE_DEBOUNCE_TIME) {
+        last_swipe_gesture_time = timer_read();
+        switch (swipe_layer) {
+            case 0:
+                switch (gesture_id) {
+                    case CST816S_SLIDE_RIGHT:
+                        register_code(KC_LCTL);
+                        tap_code(KC_Y);
+                        unregister_code(KC_LCTL);
+                        break;
+                    case CST816S_SLIDE_LEFT:
+                        register_code(KC_LCTL);
+                        tap_code(KC_Z);
+                        unregister_code(KC_LCTL);
+                        break;
+                    case CST816S_SLIDE_UP:
+                        register_code(KC_LCTL);
+                        tap_code(KC_S);
+                        unregister_code(KC_LCTL);
+                        break;
+                    case CST816S_SLIDE_DOWN:
+                        change_swipe_layer();
+                        swipe_gesture_layer_view_update();
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            case 1:
+                switch (gesture_id) {
+                    case CST816S_SLIDE_RIGHT:
+                        register_code(KC_LCTL);
+                        tap_code(KC_PGDN);
+                        unregister_code(KC_LCTL);
+                        break;
+                    case CST816S_SLIDE_LEFT:
+                        register_code(KC_LCTL);
+                        tap_code(KC_PGUP);
+                        unregister_code(KC_LCTL);
+                        break;
+                    case CST816S_SLIDE_UP:
+                        register_code(KC_LCTL);
+                        tap_code(KC_N);
+                        unregister_code(KC_LCTL);
+                        break;
+                    case CST816S_SLIDE_DOWN:
+                        change_swipe_layer();
+                        swipe_gesture_layer_view_update();
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            case 2:
+                switch (gesture_id) {
+                    case CST816S_SLIDE_RIGHT:
+                        register_code(KC_LCTL);
+                        register_code(KC_LGUI);
+                        tap_code(KC_RIGHT);
+                        unregister_code(KC_LGUI);
+                        unregister_code(KC_LCTL);
+                        break;
+                    case CST816S_SLIDE_LEFT:
+                        register_code(KC_LCTL);
+                        register_code(KC_LGUI);
+                        tap_code(KC_LEFT);
+                        unregister_code(KC_LGUI);
+                        unregister_code(KC_LCTL);
+                        break;
+                    case CST816S_SLIDE_UP:
+                        register_code(KC_LCTL);
+                        register_code(KC_LGUI);
+                        tap_code(KC_D);
+                        unregister_code(KC_LGUI);
+                        unregister_code(KC_LCTL);
+                        break;
+                    case CST816S_SLIDE_DOWN:
+                        change_swipe_layer();
+                        swipe_gesture_layer_view_update();
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            case 3:
+                switch (gesture_id) {
+                    case CST816S_SLIDE_RIGHT:
+                        tap_code(KC_F13);
+                        break;
+                    case CST816S_SLIDE_LEFT:
+                        tap_code(KC_F14);
+                        break;
+                    case CST816S_SLIDE_UP:
+                        tap_code(KC_F15);
+                        break;
+                    case CST816S_SLIDE_DOWN:
+                        change_swipe_layer();
+                        swipe_gesture_layer_view_update();
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+}
 
 bool is_touch_in_circle(uint16_t touch_x, uint16_t touch_y, point_t circle, uint16_t radius) {
     uint32_t distance_squared = (circle.x - touch_x) * (circle.x - touch_x) + (circle.y - touch_y) * (circle.y - touch_y);
@@ -301,13 +503,17 @@ bool is_touch_in_circle(uint16_t touch_x, uint16_t touch_y, point_t circle, uint
 void process_touch(uint16_t touch_x, uint16_t touch_y) {
     last_tap_time = timer_read();
     touch_signal = true;
-    touch_signal_view_updata = true;
+    touch_signal_view_update = true;
 }
 
 void process_gesture(cst816t_XY touch_data) {
     // uprintf("g id: =%d}/\n", gesture_id);
     if (gesture_id == CST816S_SLIDE_UP || gesture_id == CST816S_SLIDE_DOWN || gesture_id == CST816S_SLIDE_LEFT || gesture_id == CST816S_SLIDE_RIGHT) {
-        update_lcd_layer_category_by_gesture();
+        if (display_mode == DISPLAY_MODE_TOUCH_KEY) {
+            update_lcd_layer_category_by_gesture();
+        } else if (display_mode == DISPLAY_MODE_SWIPE_GESTURE) {
+            swipe_gesture_process();
+        }
     }else if (gesture_id == CST816S_CLICK) {
         switch (display_mode) {
             case DISPLAY_MODE_TOUCH_KEY:
@@ -327,16 +533,14 @@ void process_gesture(cst816t_XY touch_data) {
     } else if (gesture_id == CST816S_LONG_PRESS) {
         if (timer_elapsed(long_touch_time) > LONG_TOUCH_TIME) {
             switch_display_mode();
+            display_redraw();
             long_touch_time = timer_read();
         }
     }
 }
 
-
 void process_touch_interrupt(void) {
-
     uint8_t interrupt_pin = readPin(INT_PIN);
-
     if (interrupt_pin == 0) {
         single_click_flag = true;
         single_click_timer = timer_read();
@@ -350,16 +554,12 @@ void process_touch_interrupt(void) {
             single_click_flag = false;
         }
         process_gesture(touch_data);
-        uprintf("g id: =%d}/\n", gesture_id);
-        uprintf("corrdx: =%d}/\n", touch_data.x_point);
 
     } else {
     if (single_click_flag) {
         if (timer_elapsed(single_click_timer) > SINGLE_CLICK_TIME) {
-            // uprintf("add touch: =%d}/\n", gesture_id);
             touch_x = single_touch_x;
             touch_y = single_touch_y;
-            // uprintf("add corrrdx: =%d}/\n", touch_x);
             single_click_flag = false;
             last_tap_time = timer_read();
             switch (display_mode) {
@@ -429,9 +629,49 @@ void load_from_eeprom(void) {
     }
 }
 
+ColorData color_data;
+
+void save_omni_config(void) {
+    color_data.hue1 = hue_bg;
+    color_data.sat1 = sat_bg;
+    color_data.val1 = val_bg;
+    color_data.hue2 = hue_main_color;
+    color_data.sat2 = sat_main_color;
+    color_data.val2 = val_main_color;
+    color_data.hue3 = hue_sub_color;
+    color_data.sat3 = sat_sub_color;
+    color_data.val3 = val_sub_color;
+    eeprom_update_block((void *)&color_data, (void *)EEPROM_OMNI_COLORS, sizeof(color_data));
+    eeconfig_update_user(1);
+}
+
+void load_omni_config(void) {
+    eeprom_read_block((void *)&color_data, (void *)EEPROM_OMNI_COLORS, sizeof(color_data));
+    hue_bg = color_data.hue1;
+    sat_bg = color_data.sat1;
+    val_bg = color_data.val1;
+    if (color_data.hue2 == 0 && color_data.sat2 == 0 && color_data.val2 == 0) {
+        hue_main_color = 255;
+        sat_main_color = 0;
+        val_main_color = 255;
+    } else {
+        hue_main_color = color_data.hue2;
+        sat_main_color = color_data.sat2;
+        val_main_color = color_data.val2;
+    }
+    if (color_data.hue3 == 0 && color_data.sat3 == 0 && color_data.val3 == 0) {
+        hue_sub_color = 255;
+        sat_sub_color = 0;
+        val_sub_color = 255;
+    } else {
+        hue_sub_color = color_data.hue3;
+        sat_sub_color = color_data.sat3;
+        val_sub_color = color_data.val3;
+    }
+}
 
 void show_trackball_tuning_mode(void) {
-    draw_background_all();
+    draw_background_all_black();
     if (text1_width == 0) {
         text1_width = qp_textwidth(noto11_font, text1);
     }
@@ -454,8 +694,8 @@ void show_trackball_tuning_mode(void) {
     qp_drawtext(display, x_pos2 - text4_width/2, 200 - noto11_font->line_height, noto11_font, text4);
     qp_drawtext(display, x_pos2 - text5_width/2, y_pos3 - noto11_font->line_height /2, noto11_font, text5);
     qp_drawtext(display, x_pos2 - text6_width/2, y_pos4 - noto11_font->line_height /2, noto11_font, text6);
-    qp_curve(display, speed_adjust1, slope_factor1, hue1, sat1, val1, x_pos1, y_pos1);
-    qp_curve(display, speed_adjust2, slope_factor2, hue2, sat2, val2, x_pos2, y_pos2);
+    qp_curve(display, speed_adjust1, slope_factor1, hue_tbtune_r, sat_tbtune_r, val_tbtune_r, x_pos1, y_pos1);
+    qp_curve(display, speed_adjust2, slope_factor2, hue_tbtune_l, sat_tbtune_l, val_tbtune_l, x_pos2, y_pos2);
     qp_drawimage(display, 120 - image_save->width/2, 210 - image_save->height/2, image_save);
     qp_flush(display);
 }
@@ -464,15 +704,33 @@ void switch_display_mode(void) {
     switch (display_mode) {
         case DISPLAY_MODE_TOUCH_KEY:
             display_mode = DISPLAY_MODE_TRACKBALL_TUNING;
-            show_trackball_tuning_mode();
             break;
-
         case DISPLAY_MODE_TRACKBALL_TUNING:
+            display_mode = DISPLAY_MODE_SWIPE_GESTURE;
+            break;
+        case DISPLAY_MODE_SWIPE_GESTURE:
             display_mode = DISPLAY_MODE_TOUCH_KEY;
-            draw_background_all();
+            break;
+        default:
+            break;
+    }
+}
+
+void display_redraw(void) {
+    switch (display_mode) {
+        case DISPLAY_MODE_TOUCH_KEY:
+            draw_background_all_black();
             draw_lcd_layer_category_images();
             break;
-
+        case DISPLAY_MODE_TRACKBALL_TUNING:
+            show_trackball_tuning_mode();
+            break;
+        case DISPLAY_MODE_SWIPE_GESTURE:
+            draw_background_all();
+            swipe_gesture_layer_view_update();
+            swipe_gesture_base_view_update();
+            swipe_gesture_main_view_update(current_lcd_layer);
+            break;
         default:
             break;
     }
@@ -490,8 +748,6 @@ void process_touch_trackball_tuning_mode(uint16_t touch_x, uint16_t touch_y) {
     point_t plus4_center = {x_pos2 + (radius + radius_gap), y_pos3}; 
     point_t minus4_center = {x_pos2 + (radius + radius_gap), y_pos4};
     point_t save_center = {120, 215};
-    // point_t load_center = {120, 120};
-
     if (is_touch_in_circle(touch_x, touch_y, plus1_center, radius)) {
         speed_adjust1 += 0.2;
         if (speed_adjust1 > 3.0f) speed_adjust1 = 3.0f;
@@ -528,22 +784,15 @@ void process_touch_trackball_tuning_mode(uint16_t touch_x, uint16_t touch_y) {
         save_to_eeprom();
         show_trackball_tuning_mode();
     }
-
-    // else if (is_touch_in_circle(touch_x, touch_y, load_center, radius)) {
-    //     load_from_eeprom();
-    //     show_trackball_tuning_mode();
-    // }
-
     if (pre_speed_adjust1 != speed_adjust1 || pre_slope_factor1 != slope_factor1) {
-        draw_background(135, 80, 205, 145);
+        draw_background_black(135, 80, 205, 145);
         wait_ms(10);
-        qp_curve(display, speed_adjust1, slope_factor1, hue1, sat1, val1, x_pos1, y_pos1);
+        qp_curve(display, speed_adjust1, slope_factor1, hue_tbtune_r, sat_tbtune_r, val_tbtune_r, x_pos1, y_pos1);
     }else if (pre_speed_adjust2 != speed_adjust2 || pre_slope_factor2 != slope_factor2) {
-        draw_background(35, 80, 105, 145);
+        draw_background_black(35, 80, 105, 145);
         wait_ms(10);
-        qp_curve(display, speed_adjust2, slope_factor2, hue2, sat2, val2, x_pos2, y_pos2);
+        qp_curve(display, speed_adjust2, slope_factor2, hue_tbtune_l, sat_tbtune_l, val_tbtune_l, x_pos2, y_pos2);
     }
-
     pre_speed_adjust1 = speed_adjust1;
     pre_speed_adjust2 = speed_adjust2;
     pre_slope_factor1 = slope_factor1;
@@ -559,7 +808,7 @@ bool is_center_touch(uint16_t touch_x, uint16_t touch_y) {
 void update_lcd_view_data(void){
     if (memcmp(virtual_keycode, pre_virtual_keycode, KEYCODE_SIZE * sizeof(uint16_t)) != 0) {
         memcpy(pre_virtual_keycode, virtual_keycode, KEYCODE_SIZE * sizeof(uint16_t));
-        draw_background_all();
+        draw_background_all_black();
         initialize_lcd_layer_app_images();
         draw_lcd_layer_category_images();
     }
@@ -608,7 +857,11 @@ void pointing_device_init_kb(void) {
 }
 
 void keyboard_post_init_kb(void) {
+    if (!eeconfig_is_enabled()) {
+        eeconfig_init();
+    }
     load_from_eeprom(); 
+    load_omni_config();
     display = qp_gc9a01_make_spi_device(240, 240, CS_PIN, DC_PIN, RST_PIN, 4, 0); // パネル幅, パネル高さ,,,,SPIディバイザ,SPIモード
     qp_init(display, QP_ROTATION_0);
     noto11_font = qp_load_font_mem(font_noto11); 
@@ -618,8 +871,7 @@ void keyboard_post_init_kb(void) {
     } else {
         uprintf("Touch initialization successful.\n");
     }
-
-    draw_background_all();
+    draw_background_all_black();
     initialize_images();
     qp_flush(display);
     if (image_logo != NULL) {
@@ -639,10 +891,19 @@ void matrix_init_user(void) {
 }
 
 static bool tb_state = false;
+static uint8_t pre_layer = 0; 
 
 report_mouse_t  pointing_device_task_kb(report_mouse_t mouse_report) {
     pmw33xx_report_t report0 = pmw33xx_read_burst(0); // Sensor #1
     pmw33xx_report_t report1 = pmw33xx_read_burst(1); // Sensor #2
+    uint8_t current_layer = get_highest_layer(layer_state);
+    if(display_mode == DISPLAY_MODE_SWIPE_GESTURE) {
+        if (current_layer != pre_layer) {
+            swipe_gesture_main_view_update(current_layer);
+        }
+    }
+    pre_layer = current_layer;
+
     if (report0.motion.b.is_motion || report1.motion.b.is_motion) {
         tb_state = true;
     }else {
@@ -650,8 +911,8 @@ report_mouse_t  pointing_device_task_kb(report_mouse_t mouse_report) {
     }
     process_cursor_report(&mouse_report, report0, speed_adjust1, slope_factor1);
     process_tap_report(&mouse_report, report1, speed_adjust2, slope_factor2);
-    if (ENABLE_TOUCH_UPFDATE == 1) {
-        if (touch_signal_view_updata) {
+    if (ENABLE_TOUCH_UPDATE == 1) {
+        if (touch_signal_view_update) {
             if (!is_backlight_off) {
                 writePinLow(BLK_PIN);
                 blink_start_time = timer_read();
@@ -660,7 +921,7 @@ report_mouse_t  pointing_device_task_kb(report_mouse_t mouse_report) {
             if (is_backlight_off && timer_elapsed(blink_start_time) >= 50) {
                 writePinHigh(BLK_PIN);
                 is_backlight_off = false;
-                touch_signal_view_updata = false;
+                touch_signal_view_update = false;
             }
         }
     }
@@ -681,10 +942,13 @@ void matrix_scan_user(void) {
 }
 
 void sleeping_kb(bool matrix_changed) {
-     if (matrix_changed || tb_state || single_click_flag) {
+    if (matrix_changed || tb_state || single_click_flag) {
         sleeping_timer = timer_read();
         if (sleeping_state) {
-            lcd_is_on = power_on_lcd();
+            if (!lcd_is_on){
+                lcd_is_on = power_on_lcd();
+            }
+            display_redraw();
             sleeping_state = false;
         }
     }
@@ -693,9 +957,23 @@ void sleeping_kb(bool matrix_changed) {
             lcd_is_on = power_off_lcd();
             sleeping_state = true;
         }
-    }
+    } else if (SLEEP_VIEW == 0) {
+        return;
+    } else if(SLEEP_VIEW == 1) {
+        if (timer_elapsed(draw_matrix_code_rain_timer) > 50) {
+            draw_matrix_code_rain_timer = timer_read();
+            if (!lcd_is_on){
+                lcd_is_on = power_on_lcd();
+            }
+            if (!fast_draw_matrix_code_rain) {
+                init_matrix_code_rain();
+                fast_draw_matrix_code_rain = true;
+            }
+            update_matrix_code_rain();
+            draw_matrix_code_rain(display, noto11_font);
+        }
+    } 
 }
-
 
 void housekeeping_task_user(void) {
     lcd_current_time = timer_read();
@@ -703,15 +981,83 @@ void housekeeping_task_user(void) {
         if (is_first_frame) {
             is_first_frame = false;
             qp_stop_animation(my_anim);
-            draw_background_all();
+            draw_background_all_black();
             initialize_lcd_layer_app_images();
         }
     }
-
     matrix_changed = get_last_matrix_state();
     sleeping_kb(matrix_changed);
-
 }
 
+bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
+    if (!record->event.pressed) return true;
+    switch (keycode) {
+        case KC_hue_bg_UP:
+            hue_bg = (hue_bg + 16) % 256;
+            break;
+        case KC_hue_bg_DOWN:
+            hue_bg = (hue_bg >= 16) ? (hue_bg - 16) : (hue_bg + 240); // 0を下回ったら240を足す
+            break;
+        case KC_sat_bg_UP:
+            sat_bg = (sat_bg < 240) ? sat_bg + 16 : 255;
+            break;
+        case KC_sat_bg_DOWN:
+            sat_bg = (sat_bg > 16) ? sat_bg - 16 : 0;
+            break;
+        case KC_val_bg_UP:
+            val_bg = (val_bg < 240) ? val_bg + 16 : 255;
+            break;
+        case KC_val_bg_DOWN:
+            val_bg = (val_bg > 16) ? val_bg - 16 : 0;
+            break;
+        case KC_hue_main_color_UP:
+            hue_main_color = (hue_main_color + 16) % 256;
+            break;
+        case KC_hue_main_color_DOWN:
+            hue_main_color = (hue_main_color >= 16) ? (hue_main_color - 16) : (hue_main_color + 240);
+            break;
+        case KC_sat_main_color_UP:
+            sat_main_color = (sat_main_color < 240) ? sat_main_color + 16 : 255;
+            break;
+        case KC_sat_main_color_DOWN:
+            sat_main_color = (sat_main_color > 16) ? sat_main_color - 16 : 0;
+            break;
+        case KC_val_main_color_UP:
+            val_main_color = (val_main_color < 240) ? val_main_color + 16 : 255;
+            break;
+        case KC_val_main_color_DOWN:
+            val_main_color = (val_main_color > 16) ? val_main_color - 16 : 0;
+            break;
+        case KC_hue_sub_color_UP:
+            hue_sub_color = (hue_sub_color + 16) % 256;
+            break;
+        case KC_hue_sub_color_DOWN:
+            hue_sub_color = (hue_sub_color >= 16) ? (hue_sub_color - 16) : (hue_sub_color + 240);
+            break;
+        case KC_sat_sub_color_UP:
+            sat_sub_color = (sat_sub_color < 240) ? sat_sub_color + 16 : 255;
+            break;
+        case KC_sat_sub_color_DOWN:
+            sat_sub_color = (sat_sub_color > 16) ? sat_sub_color - 16 : 0;
+            break;
+        case KC_val_sub_color_UP:
+            val_sub_color = (val_sub_color < 240) ? val_sub_color + 16 : 255;
+            break;
+        case KC_val_sub_color_DOWN:
+            val_sub_color = (val_sub_color > 16) ? val_sub_color - 16 : 0;
+            break;
+        default:
+            return true;
+    }
+    save_omni_config();
+    draw_background_all();
+    swipe_gesture_base_view_update();
+    swipe_gesture_main_view_update(current_lcd_layer);
+    swipe_gesture_layer_view_update();
+    return false;
+}
 
-
+void suspend_power_down_user(void){
+    lcd_is_on = power_off_lcd();
+    sleeping_state = true;
+};

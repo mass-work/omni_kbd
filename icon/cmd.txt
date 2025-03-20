@@ -1,5 +1,5 @@
 
-cd keyboards/omni_cs/icon
+cd keyboards/omni_kbd/icon
 qmk painter-convert-graphics -f mono16 -i test.png -o ./generated/
 qmk painter-convert-graphics -f rgb565 -i test.png -o ./generated/
 qmk painter-convert-graphics -f mono2 -i omni_logo.gif -o ./generated/
@@ -36,6 +36,8 @@ qmk painter-convert-graphics -f mono2 -i layer_11.png -o ./generated/
 
 
 qmk painter-convert-graphics -f rgb565 -i 230.png -o ./generated/
+qmk painter-convert-graphics -f rgb565 -i 000.png -o ./generated/
+
 
 qmk painter-convert-graphics -f mono2 -i 230.png -o ./generated/
 qmk painter-convert-graphics -f mono2 -i 000.png -o ./generated/

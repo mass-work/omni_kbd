@@ -74,234 +74,22 @@
 
 
 enum keyboard_layers {
-    _DEFAULT,
+    _BASE,
     _NUM,
     _SYMBOL,
-    _TEST,
+    _USER,
 };
 
-enum custom_keycodes {
-    VD_LEFT = SAFE_RANGE, // 仮想デスクトップ移動
-    VD_RIGHT,
-    WIN_LEFT, // ウィンドウをスナップ
-    WIN_RIGHT,
-    WIN_UP,
-    WIN_DOWN,
-    S_SHOT, //スクリーンショット
-    M_ENT,
-    M_BS,
-    M_DEL,
-    DRAG_SCROLL,
-    TD_LANG,
-};
-bool set_scrolling = false; //add
 
-static uint8_t tap_count = 0;
-static uint16_t last_tap_dance_time = 0;
-bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-  switch (keycode) {
-    case DRAG_SCROLL:
-            set_scrolling = record->event.pressed;
-      break;
-
-    case VD_LEFT:
-      if (record->event.pressed) {
-        register_code(KC_LCTL);
-        register_code(KC_LGUI);
-        tap_code(KC_LEFT);
-        unregister_code(KC_LGUI);
-        unregister_code(KC_LCTL);
-      }
-      break;
-
-    case VD_RIGHT:
-      if (record->event.pressed) {
-        register_code(KC_LCTL);
-        register_code(KC_LGUI);
-        tap_code(KC_RIGHT);
-        unregister_code(KC_LGUI);
-        unregister_code(KC_LCTL);
-      }
-      break;
-
-    case WIN_LEFT:
-      if (record->event.pressed) {
-        register_code(KC_LGUI);
-        tap_code(KC_LEFT);
-        unregister_code(KC_LGUI);
-      }
-      break;
-
-    case WIN_RIGHT:
-      if (record->event.pressed) {
-        register_code(KC_LGUI);
-        tap_code(KC_RIGHT);
-        unregister_code(KC_LGUI);
-      }
-      break;
-
-    case WIN_UP:
-      if (record->event.pressed) {
-        register_code(KC_LGUI);
-        tap_code(KC_UP);
-        unregister_code(KC_LGUI);
-      }
-      break;
-
-    case WIN_DOWN:
-      if (record->event.pressed) {
-        register_code(KC_LGUI);
-        tap_code(KC_DOWN);
-        unregister_code(KC_LGUI);
-      }
-      break;
-
-    case S_SHOT:
-      if (record->event.pressed) {
-        register_code(KC_LGUI);
-        register_code(KC_LSFT);
-        tap_code(KC_S);
-        unregister_code(KC_LGUI);
-        unregister_code(KC_LSFT);
-      }
-      break;
-
-    case M_ENT:
-      if (record->event.pressed) {
-        tap_code(KC_ENT);
-      }
-      break;
-
-    case M_BS:
-      if (record->event.pressed) {
-        tap_code(KC_BSPC);
-      }
-       break;
-
-    case M_DEL:
-      if (record->event.pressed) {
-        tap_code(KC_DEL);
-      }
-       break;
-
-    case TD_LANG:
-        if (record->event.pressed) {
-            // タップ開始時にタップカウントと時間を更新
-            if (timer_elapsed(last_tap_dance_time) > 200) {
-                tap_count = 0;
-            }
-            tap_count++;
-            last_tap_dance_time = timer_read();
-        } else {
-            // リリース時にタップカウントを判定
-            if (tap_count == 1 && timer_elapsed(last_tap_dance_time) < 200) {
-                // シングルタップ - KC_LANG1
-                tap_code(KC_LNG1);
-            } else if (tap_count == 2 && timer_elapsed(last_tap_dance_time) < 200) {
-                // ダブルタップ - KC_LANG2
-                tap_code(KC_LNG2);
-            }
-            // リセットを遅延させる
-            if (timer_elapsed(last_tap_dance_time) >= 200) {
-                tap_count = 0;
-            }
-        }
-        return false;  // 他の処理をブロック
-    case 0x7700: // 0x7700から0x7719（Ctrl + Alt + A~Zの範囲）
-        if (record->event.pressed) {
-            register_code(KC_LCTL);
-            register_code(KC_LALT);
-            tap_code(KC_A); // A~Zを登録
-            unregister_code(KC_LALT);
-            unregister_code(KC_LCTL);
-        }
-        return false; // 他のキーコード処理をブロック
-
-
-  }
-  return true;
-}
-
-// // auto  mouse setting
-// bool is_mouse_record_kb(uint16_t keycode, keyrecord_t* record) {
-//     switch(keycode) {
-//         case M_ENT:
-//             return true;
-//         case M_BS:
-//             return true;
-//         case M_DEL:
-//             return true;
-//         case DRAG_SCROLL:
-//             return true;
-//         default:
-//             return false;
-//     }
-//     return  is_mouse_record_user(keycode, record);
-// }
-
-// void pointing_device_init_user(void) {
-//     set_auto_mouse_layer(_MOUSE);
-//     set_auto_mouse_enable(true);
-// }
-
-// layer_state_t layer_state_set_user(layer_state_t state) {
-//     // Disable set_scrolling if the current layer is not the AUTO_MOUSE_DEFAULT_LAYER
-//     if (get_highest_layer(state) != AUTO_MOUSE_DEFAULT_LAYER) {
-//         set_scrolling = false;
-//     }
-//     return state;
-// }
-
-/* _DEFAULT Layer
- * ,-------------------------------------------     --------------------------------------------------------------.
- * |  Esc  |   1  |   2  |   3  |   4  |   5  |     |   6  |   7  |   8  |   9  |   0  |  -   |半角全角|
- * |-------------------------------------------     --------------------------------------------------------------|
- * |  Tab  |   Q  |   W  |   E  |   R  |   T  |     |   Y  |   U  |   I  |   O  |   P  |  @   | Enter|
- * |-------------------------------------------     --------------------------------------------------------------|
- * | Shift |   A  |   S  |   D  |   F  |   G  |     |   H  |   J  |   K  |   L  |  ;   |  :   | Enter|
- * |-------------------------------------------     --------------------------------------------------------------|
- * | Ctrl  |   Z  |   X  |   C  |   V  |   B  |     |   N  |   M  |  ,   |  .   |  /   |  \   | Bkspc|
- * |-------------------------------------------     --------------------------------------------------------------|
- * |       |      |  Win |  Alt |Spa/Mou|Spa/NUM |  |      |      |      |      |      |      |
- * `----------------------------------------------  --------------------------------------------------------------'
- */
-
-/* _NUM Layer
- * ,-------------------------------------------     --------------------------------------------------------------.
- * |       |      |      |      |      |      |     |      |      |  [   | ]    |      |      |      |
- * |-------------------------------------------     --------------------------------------------------------------|
- * |       |  F9  |  F10 |  F11 |  F12 |      |     |  +   |  7   |  8   |  9   |  *   |  \   |      |
- * |-------------------------------------------     --------------------------------------------------------------|
- * |       |  F5  |  F6  |  F7  |  F8  |      |     |  -   |  4   |  5   |  6   |  /   |  ^   |      |
- * |-------------------------------------------     --------------------------------------------------------------|
- * |       |  F1  |  F2  |  F3  |  F4  |      |     |  0   |  1   |  2   |  3   |  .   | Enter|      |
- * |-------------------------------------------     --------------------------------------------------------------|
- * |       |      |      |      |      |      |     |      |      |      |      |      |      |      |
- * `-------------------------------------------     --------------------------------------------------------------'
- */
-
-/* _SYMBOL Layer
- * ,--------------------------------------------    -------------------------------------------------------------.
- * |WLFT  |WUP   |WDWN  |WRGT  |VDLT    |VDRG  |    |      |      |      |      |      |      |      |
- * |--------------------------------------------    -------------------------------------------------------------|
- * |      |      |      |UP    |S_SHOT  |      |    |      |      |      |      |      |      |      |
- * |--------------------------------------------    -------------------------------------------------------------|
- * |      |A(C)  |LEFT  |DOWN  |RIGHT   |      |    |      |LClick|CClick|RClick|       |      |      |
- * |--------------------------------------------    -------------------------------------------------------------|
- * |      |Z(C)  |X(C)  |C(C)  |V(C)    |B(C)  |    |      |Enter |Bkspc | Del  |      |      |      |
- * |--------------------------------------------    -------------------------------------------------------------|
- * |      |      |      |      |        |      |    |      |      |      |      |      |      |      |
- * `--------------------------------------------    -------------------------------------------------------------'
- */
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
-    [_DEFAULT] = LAYOUT(
-        KC_ESC,  KC_Q,    KC_W,    KC_E,     KC_R,    KC_T,                                KC_Y,          KC_U,      KC_I,    KC_O,    KC_P,    KC_MINUS,
-        KC_LSFT, KC_A,    KC_S,    KC_D,     KC_F,    KC_G,                                KC_H,          KC_J,      KC_K,    KC_L,    KC_SCLN, KC_BSPC,
-        KC_LCTL, KC_Z,    KC_X,    KC_C,     KC_V,    KC_B,                                KC_N,          KC_M,      KC_COMM, KC_DOT,  KC_SLSH, KC_INT1,
-        KC_TAB,  KC_LNG1, KC_LNG2, KC_LALT,  KC_BTN2, KC_BTN3, KC_BTN1,      LT(1,KC_SPC), LT(2,KC_ENT),  _______,                              KC_TAB,
-        KC_LGUI,
-        KC_A , 0x7701, 0x7702, 0x7703, 0x7704, 0x7705,
+    [_BASE] = LAYOUT(
+        KC_ESC,  KC_Q,    KC_W,    KC_E,     KC_R,    KC_T,                                     KC_Y,          KC_U,      KC_I,    KC_O,    KC_P,    KC_MINUS,
+        KC_LSFT, KC_A,    KC_S,    KC_D,     KC_F,    KC_G,                                     KC_H,          KC_J,      KC_K,    KC_L,    KC_SCLN, KC_BSPC,
+        KC_LCTL, KC_Z,    KC_X,    KC_C,     KC_V,    KC_B,                                     KC_N,          KC_M,      KC_COMM, KC_DOT,  KC_SLSH, KC_INT1,
+        KC_TAB,  KC_LNG1, KC_LNG2, KC_LALT,  KC_BTN2, KC_BTN3, KC_BTN1,           LT(1,KC_SPC), LT(2,KC_ENT),  _______,                              LT(3,KC_SPC),
+        KC_LGUI,     
+        0x7700, 0x7701, 0x7702, 0x7703, 0x7704, 0x7705,
         0x7706, 0x7707, 0x7708, 0x7709, 0x770A, 0x770B,
         0x770C, 0x770D, 0x770E, 0x770F, 0x7710, 0x7711,
         0x7712, 0x7713, 0x7714, 0x7715, 0x7716, 0x7717,
@@ -329,13 +117,13 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
     ),
     [_NUM] = LAYOUT(
-        _______,    KC_1,      KC_2,      KC_3,      KC_4,    KC_5,                        KC_6,     KC_7,     KC_8,     KC_9,     KC_0,   KC_F12,
-        _______,    KC_NO,     KC_NO,     KC_NO,     KC_NO,   KC_NO,                       KC_PPLS,  KC_PMNS,  KC_PAST,  KC_PSLS, KC_EQL, KC_DEL,
-        _______,    KC_F1,     KC_F2,     KC_F3,     KC_F4,   KC_F5,                       KC_F6,    KC_F7,    KC_F8,    KC_F9,   KC_F10,  KC_F11,
-        _______,    _______,   _______,  _______,   _______,  _______, _______,  _______,  _______,  _______,                              _______,
-        _______,
-        0x7700, 0x7701, 0x7702, 0x7703, 0x7704, 0x7705,
-        0x7706, 0x7707, 0x7708, 0x7709, 0x770A, 0x770B,
+        _______,    KC_1,      KC_2,      KC_3,      KC_4,    KC_5,                           KC_6,     KC_7,     KC_8,     KC_9,     KC_0,   KC_F12,
+        _______,    KC_NO,     KC_NO,     KC_NO,     KC_NO,   KC_NO,                          KC_PPLS,  KC_PMNS,  KC_PAST,  KC_PSLS, KC_EQL, KC_DEL,
+        _______,    KC_F1,     KC_F2,     KC_F3,     KC_F4,   KC_F5,                          KC_F6,    KC_F7,    KC_F8,    KC_F9,   KC_F10,  KC_F11,
+        _______,    _______,   _______,  _______,   _______,  _______, _______,     _______,  _______,  _______,                              _______,
+        _______,   
+        0x7700, 0x7701, 0x7702, 0x7703, 0x7704, 0x7705,   
+        0x7706, 0x7707, 0x7708, 0x7709, 0x770A, 0x770B,   
         0x770C, 0x770D, 0x770E, 0x770F, 0x7710, 0x7711,
         0x7712, 0x7713, 0x7714, 0x7715, 0x7716, 0x7717,
         0x7718, 0x7719, 0x771A, 0x771B, 0x771C, 0x771D,
@@ -360,14 +148,12 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         _______,    _______,    _______,  _______,    _______,   _______
 
 
-
-
     ),
     [_SYMBOL] = LAYOUT(
-        _______,  KC_NO,   KC_NO,    KC_UP,    S_SHOT,    _______,                         LSFT(KC_1),   LSFT(KC_SLSH), LSFT(KC_8),    LSFT(KC_9),    LSFT(KC_7), LSFT(KC_2),
-        _______,  KC_NO,   KC_LEFT,  KC_DOWN,  KC_RIGHT,  KC_NO,                           LSFT(KC_6),   LSFT(KC_INT3), KC_RBRC,       KC_NUHS,       KC_QUOT,      LSFT(KC_EQL),
-        _______,  KC_NO,   KC_NO,    KC_NO,    KC_NO,     KC_NO,                           LSFT(KC_3),   KC_LBRC,       LSFT(KC_RBRC), LSFT(KC_NUHS), LSFT(KC_LBRC), LSFT(KC_5),
-        _______,  _______, _______,  _______,  _______,   _______,  _______,      _______, _______,       _______,                                                 LSFT(KC_4),
+        _______,  KC_NO,   KC_NO,    KC_UP,    KC_NO,     KC_NO,                          LSFT(KC_1),   LSFT(KC_SLSH), LSFT(KC_8),    LSFT(KC_9),    LSFT(KC_5),    LSFT(KC_EQL),
+        _______,  KC_NO,   KC_LEFT,  KC_DOWN,  KC_RIGHT,  KC_NO,                          LSFT(KC_6),   LSFT(KC_INT3), KC_RBRC,       KC_NUHS,       KC_QUOT,       LSFT(KC_2),
+        _______,  KC_NO,   KC_NO,    KC_NO,    KC_NO,     KC_NO,                          LSFT(KC_3),   KC_LBRC,       LSFT(KC_RBRC), LSFT(KC_NUHS), LSFT(KC_LBRC), LSFT(KC_7),
+        _______,  _______, _______,  _______,  _______,   _______,  _______,     _______, _______,      _______,                                                    LSFT(KC_4),
         _______,
         _______,    _______,    _______,  _______,    _______,   _______,
         _______,    _______,    _______,  _______,    _______,   _______,
@@ -397,11 +183,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 
     ),
-    [_TEST] = LAYOUT(
-        _______,    _______, _______, _______, _______, _______,    _______, _______, _______, _______, _______, _______,
-        _______,    _______, _______, _______, _______, _______,    _______, _______, _______, _______, _______, _______,
-        _______,    _______, _______, _______, _______, _______,    _______, _______, _______, _______, _______, _______,
-        _______,    _______, _______, _______, _______, _______,    _______, _______, _______, _______, _______,
+    [_USER] = LAYOUT(
+        KC_hue_bg_UP        , KC_hue_bg_DOWN        , KC_sat_bg_UP        , KC_sat_bg_DOWN        , KC_val_bg_UP         , KC_val_bg_DOWN        ,      _______, _______, _______, _______, _______, _______,
+        KC_hue_main_color_UP, KC_hue_main_color_DOWN, KC_sat_main_color_UP, KC_sat_main_color_DOWN,  KC_val_main_color_UP, KC_val_main_color_DOWN,      _______, _______, _______, _______, _______, _______,
+        KC_hue_sub_color_UP , KC_hue_sub_color_DOWN , KC_sat_sub_color_UP , KC_sat_sub_color_DOWN , KC_val_sub_color_UP  , KC_val_sub_color_DOWN ,      _______, _______, _______, _______, _______, _______,
+        _______             , _______               , _______             , _______               , _______              , _______               ,      _______, _______, _______, _______, _______,
         _______,
         _______,    _______,    _______,  _______,    _______,   _______,
         _______,    _______,    _______,  _______,    _______,   _______,
@@ -427,25 +213,8 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         _______,    _______,    _______,  _______,    _______,   _______,
         _______,    _______,    _______,  _______,    _______,   _______,
         _______,    _______,    _______,  _______,    _______,   _______
-
-
 
     )
 };
 
-const char* get_layer_name(uint8_t layer) {
-    switch (layer) {
-        case _DEFAULT:
-            return PSTR("DEFAULT");
-        case _NUM:
-            return PSTR("NUM");
-        case _SYMBOL:
-            return PSTR("SYMBOL");
-        case _TEST:
-            return PSTR("TEST");
-        // Add other cases for additional layers
-        default:
-            return PSTR("Unknown");
-    }
-}
 

@@ -231,6 +231,10 @@ bool matrix_scan_custom(matrix_row_t current_matrix[])
 
         case DISPLAY_MODE_TRACKBALL_TUNING:
             break;
+
+        case DISPLAY_MODE_SWIPE_GESTURE:
+            break;
+            
         default:
             break;
     }

@@ -3,10 +3,9 @@
 
 #pragma once
 
-#include <stdlib.h>		//itoa()
+#include <stdlib.h>
 #include <stdio.h>
 
-// #define address   0x15  //slave address
 #define CST816S_ADDR (0x15 << 1)  // 7ビットアドレスを左シフト
 
 #define GESTUREID 0x01 //gesture code
@@ -92,13 +91,5 @@ typedef enum {
 	TOUCH_NO_DRAW,
 } Touch_STATE;
 
-
 uint8_t cst816t_init(uint8_t mode);
-// void cst816t_Reset(void);
-
-cst816t_XY cst816t_Get_Point(void);  // プロトタイプの修正
-
-// uint8_t read_finger_num(void);
-
-// cst816t_XY cst816t_Get_Point();
-
+cst816t_XY cst816t_Get_Point(void);

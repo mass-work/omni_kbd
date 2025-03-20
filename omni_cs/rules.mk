@@ -120,3 +120,6 @@ SRC += ../icon/generated/080.qgf.c
 I2C_ENABLE = yes
 QUANTUM_LIB_SRC += i2c_master.c
 SRC += drivers/cst816t.c
+SRC += ../customfunc/get_custom_gesture.c
+
+SRC += ../customfunc/sleeping_view.c

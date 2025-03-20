@@ -1,3 +1,6 @@
+// Copyright 2025 mass
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 #include "omni_image_loader.h"
 #include "generated/omni_logo.qgf.h"
 #include "generated/save.qgf.h"
