@@ -128,6 +128,10 @@ uint8_t single_click_counter = 0;
 uint16_t single_click_timer;
 uint16_t single_touch_x;
 uint16_t single_touch_y;
+uint16_t pre_single_touch_x;
+uint16_t pre_single_touch_y;
+
+
 
 static const char *text1 = "TB TUNE";
 static const char *text3 = "Right";
@@ -553,6 +557,11 @@ void process_touch_interrupt(void) {
         if (gesture_id != 0) {
             single_click_flag = false;
         }
+        if (pre_single_touch_x != single_touch_x || pre_single_touch_y != single_touch_y){
+            single_click_flag = false;
+        }
+        pre_single_touch_x = single_touch_x;
+        pre_single_touch_y = single_touch_y;
         process_gesture(touch_data);
 
     } else {
