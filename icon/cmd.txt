@@ -1,0 +1,19 @@
+qmk painter-convert-graphics -f rgb565 -i 100.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_01.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_02.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_03.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_04.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_05.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_06.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_07.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_08.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_09.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_10.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i layer_11.png -o ./generated/
+
+qmk painter-convert-graphics -f pal16 -i 081.png -o ./generated/
+qmk painter-convert-graphics -f pal16 -i 082.png -o ./generated/
+qmk painter-convert-graphics -f pal16 -i 083.png -o ./generated/
+qmk painter-convert-graphics -f pal16 -i 084.png -o ./generated/
+qmk painter-convert-graphics -f pal16 -i 085.png -o ./generated/
+qmk painter-convert-graphics -f pal16 -i 086.png -o ./generated/
