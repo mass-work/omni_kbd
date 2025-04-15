@@ -2,14 +2,8 @@
 
 #include "quantum.h"
 #include "../drivers/cst816t.h"
-#include "dynamic_keymap.h"
 #include <stdint.h>
 
-#define EEPROM_TOTAL_SIZE 4096
-#define EEPROM_OMNI_RESERVATION (EEPROM_TOTAL_SIZE - sizeof(OmniData))
-#define EEPROM_CUSTOM_DATA_ADDR (EEPROM_OMNI_RESERVATION - sizeof(CalibrationData) - sizeof(ColorData))
-#define EEPROM_OMNI_TB (EEPROM_CUSTOM_DATA_ADDR)
-#define EEPROM_OMNI_COLORS (EEPROM_OMNI_TB+ sizeof(CalibrationData))
 #define DEFAULT_SPEED_ADJUST1 1.6f
 #define DEFAULT_SLOPE_FACTOR1 50
 #define DEFAULT_SPEED_ADJUST2 1.4f
@@ -22,38 +16,15 @@
 #define SLEEPING_KB_TIME 60000
 #define SLEEP_VIEW 1 // 1: code rain
 
-typedef struct {
-    uint8_t speed_adjust1;
-    uint8_t slope_factor1;
-    uint8_t speed_adjust2;
-    uint8_t slope_factor2;
-} CalibrationData;
+typedef enum {
+    TRACKBALL_CURSOR = 0,
+    TRACKBALL_TAP    = 1,
+} trackball_mode_t;
 
-typedef struct {
-    uint8_t hue1;
-    uint8_t sat1;
-    uint8_t val1;
-    uint8_t hue2;
-    uint8_t sat2;
-    uint8_t val2;       
-    uint8_t hue3;
-    uint8_t sat3;
-    uint8_t val3;
-} ColorData;
-
-typedef struct {
-    uint8_t reservation0;
-    uint8_t reservation1;
-    uint8_t reservation2;
-    uint8_t reservation3;
-    uint8_t reservation4;
-    uint8_t reservation5;
-    uint8_t reservation6;       
-    uint8_t reservation7;
-} OmniData;
+const char *get_layer_name(uint8_t layer); 
 
 enum custom_keycodes {
-    KC_hue_bg_UP = SAFE_RANGE,
+    KC_hue_bg_UP = QK_KB_0,
     KC_hue_bg_DOWN,
     KC_sat_bg_UP,
     KC_sat_bg_DOWN,
@@ -71,12 +42,20 @@ enum custom_keycodes {
     KC_sat_sub_color_DOWN,
     KC_val_sub_color_UP,
     KC_val_sub_color_DOWN,
+    AUTO_MOUSE_TOGGLE,
+    TB_R_MODE_TOGGLE,
+    TB_L_MODE_TOGGLE,
+    KC_DP_TOUCH_KEY,
+    KC_DP_TB_TUNE,
+    KC_DP_SWIPE_GESTURE,
+    KC_DP_KEY_MAT,
 };
 
 typedef enum {
     DISPLAY_MODE_TOUCH_KEY,
     DISPLAY_MODE_TRACKBALL_TUNING,
     DISPLAY_MODE_SWIPE_GESTURE,
+    DISPLAY_MODE_KEY_MATRIX,
 } display_mode_t;
 
 typedef struct {

@@ -5,8 +5,7 @@ CONSOLE_ENABLE = yes         # Console for debug
 COMMAND_ENABLE = no         # Commands for debug and configuration
 NKRO_ENABLE = yes           # Enable N-Key Rollover
 DYNAMIC_MACRO_ENABLE = yes
-EEPROM_ENABLE = yes
-
+DYNAMIC_KEYMAP_ENABLE = yes
 CUSTOM_MATRIX = lite		# duplex matrix
 SRC += matrix.c
 
@@ -20,6 +19,8 @@ QUANTUM_PAINTER_ENABLE = yes
 QUANTUM_PAINTER_DRIVERS += gc9a01_spi
 SRC += ../customfunc/draw_custom.c
 SRC += ../font/noto11.qff.c
+SRC += ../font/roboto_mono16.qff.c
+SRC += ../font/st2_mono16.qff.c
 SRC += ../icon\omni_image_loader.c
 SRC += ../icon/generated/omni_logo.qgf.c
 SRC += ../icon/generated/save.qgf.c
@@ -116,6 +117,12 @@ SRC += ../icon/generated/077.qgf.c
 SRC += ../icon/generated/078.qgf.c
 SRC += ../icon/generated/079.qgf.c
 SRC += ../icon/generated/080.qgf.c
+SRC += ../icon/generated/081.qgf.c
+SRC += ../icon/generated/082.qgf.c
+SRC += ../icon/generated/083.qgf.c
+SRC += ../icon/generated/084.qgf.c
+SRC += ../icon/generated/085.qgf.c
+SRC += ../icon/generated/086.qgf.c
 
 I2C_ENABLE = yes
 QUANTUM_LIB_SRC += i2c_master.c
@@ -123,3 +130,5 @@ SRC += drivers/cst816t.c
 SRC += ../customfunc/get_custom_gesture.c
 
 SRC += ../customfunc/sleeping_view.c
+SRC += ../customfunc/view_keymap.c
+

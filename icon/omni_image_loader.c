@@ -97,6 +97,12 @@
 #include "generated/078.qgf.h"
 #include "generated/079.qgf.h"
 #include "generated/080.qgf.h"
+#include "generated/081.qgf.h"
+#include "generated/082.qgf.h"
+#include "generated/083.qgf.h"
+#include "generated/084.qgf.h"
+#include "generated/085.qgf.h"
+#include "generated/086.qgf.h"
 
 painter_image_handle_t image_logo;
 painter_image_handle_t image_save;
@@ -200,5 +206,10 @@ void initialize_images(void) {
     image_078 = qp_load_image_mem(gfx_078);
     image_079 = qp_load_image_mem(gfx_079);
     image_080 = qp_load_image_mem(gfx_080);
-
+    image_081 = qp_load_image_mem(gfx_081);
+    image_082 = qp_load_image_mem(gfx_082);
+    image_083 = qp_load_image_mem(gfx_083);
+    image_084 = qp_load_image_mem(gfx_084);
+    image_085 = qp_load_image_mem(gfx_085);
+    image_086 = qp_load_image_mem(gfx_086);
 }

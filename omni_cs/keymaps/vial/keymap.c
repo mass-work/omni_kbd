@@ -5,6 +5,7 @@
 // #include QMK_KEYBOARD_H
 #include "../../omni_cs.h"
 #include "config.h"
+#include "dynamic_keymap.h"
 
 #define LAYOUT( \
     L00, L01, L02, L03, L04, L05, R00, R01, R02, R03, R04, R05, \
@@ -77,8 +78,18 @@ enum keyboard_layers {
     _BASE,
     _NUM,
     _SYMBOL,
-    _USER,
+    _CUSTOM,
 };
+
+void pointing_device_init_user(void) {
+    set_auto_mouse_layer(_CUSTOM);
+    if (dynamic_keymap_get_keycode(3,9,0) == 0x7701) {
+        set_auto_mouse_enable(true);
+    } else {
+        set_auto_mouse_enable(false);
+    }
+}
+
 
 
 
@@ -183,18 +194,18 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 
     ),
-    [_USER] = LAYOUT(
-        KC_hue_bg_UP        , KC_hue_bg_DOWN        , KC_sat_bg_UP        , KC_sat_bg_DOWN        , KC_val_bg_UP         , KC_val_bg_DOWN        ,      _______, _______, _______, _______, _______, _______,
-        KC_hue_main_color_UP, KC_hue_main_color_DOWN, KC_sat_main_color_UP, KC_sat_main_color_DOWN,  KC_val_main_color_UP, KC_val_main_color_DOWN,      _______, _______, _______, _______, _______, _______,
-        KC_hue_sub_color_UP , KC_hue_sub_color_DOWN , KC_sat_sub_color_UP , KC_sat_sub_color_DOWN , KC_val_sub_color_UP  , KC_val_sub_color_DOWN ,      _______, _______, _______, _______, _______, _______,
+    [_CUSTOM] = LAYOUT(
+        KC_hue_bg_UP        , KC_hue_bg_DOWN        , KC_sat_bg_UP        , KC_sat_bg_DOWN        , KC_val_bg_UP         , KC_val_bg_DOWN        ,      KC_DP_TOUCH_KEY, KC_DP_TB_TUNE, KC_DP_SWIPE_GESTURE, KC_DP_KEY_MAT, _______, _______,
+        KC_hue_main_color_UP, KC_hue_main_color_DOWN, KC_sat_main_color_UP, KC_sat_main_color_DOWN,  KC_val_main_color_UP, KC_val_main_color_DOWN,      _______, KC_BTN1, KC_BTN3, KC_BTN2, TB_R_MODE_TOGGLE, _______,
+        KC_hue_sub_color_UP , KC_hue_sub_color_DOWN , KC_sat_sub_color_UP , KC_sat_sub_color_DOWN , KC_val_sub_color_UP  , KC_val_sub_color_DOWN ,      _______, _______, _______, _______, _______, AUTO_MOUSE_TOGGLE,
         _______             , _______               , _______             , _______               , _______              , _______               ,      _______, _______, _______, _______, _______,
         _______,
+        0x7700,    0x7700,    0x7700,  _______,    _______,   _______,
+        0x7700,    0x7700,    0x77FE,  0x7700,    0x7700,   0x77FE,
         _______,    _______,    _______,  _______,    _______,   _______,
+        0x770E,    0x773C,    0x770C,  0x7741,    _______,   _______,
         _______,    _______,    _______,  _______,    _______,   _______,
-        _______,    _______,    _______,  _______,    _______,   _______,
-        _______,    _______,    _______,  _______,    _______,   _______,
-        _______,    _______,    _______,  _______,    _______,   _______,
-        _______,    _______,    _______,  _______,    _______,   _______,
+        0x7700,    _______,    _______,  _______,    _______,   _______,
         _______,    _______,    _______,  _______,    _______,   _______,
         _______,    _______,    _______,  _______,    _______,   _______,
         _______,    _______,    _______,  _______,    _______,   _______,

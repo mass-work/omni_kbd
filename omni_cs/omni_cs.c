@@ -12,20 +12,31 @@
 #include "i2c_master.h"
 #include "gpio.h"
 #include "qp.h"
-#include "eeprom.h"
+// #include "eeprom.h"
 #include "usb_main.h"
 #include "usb_driver.h"
 #include "matrix.h"
 #include "config.h"
 #include "omni_cs.h"
+#include "dynamic_keymap.h"
 
 #include "../drivers/pmw33xx_common.h"
 #include "../drivers/cst816t.h"
 #include "../customfunc/sleeping_view.h"
 #include "../customfunc/draw_custom.h"
 #include "../customfunc/get_custom_gesture.h"
+#include "../customfunc/view_keymap.h"
 #include "../font/noto11.qff.h"
+#include "../font/roboto_mono16.qff.h"
+#include "../font/st2_mono16.qff.h"
 #include "../icon/omni_image_loader.h"
+
+#define MACRO_KEY_START 0x7700
+#define MACRO_KEY_END   0x77FE
+#define MACRO_KEY_COUNT (MACRO_KEY_END - MACRO_KEY_START + 1)
+#define constrain_hid(amt) ((amt) < -127 ? -127 : ((amt) > 127 ? 127 : (amt)))
+
+uint8_t current_layer = 0;
 
 uint16_t draw_matrix_code_rain_timer = 0;
 bool fast_draw_matrix_code_rain = false;
@@ -46,17 +57,21 @@ uint32_t sleeping_timer;
 bool matrix_changed = false;
 bool sleeping_state = false;
 
-#define MACRO_KEY_START 0x7700
-#define MACRO_KEY_END   0x77FE
-#define MACRO_KEY_COUNT (MACRO_KEY_END - MACRO_KEY_START + 1)
-#define constrain_hid(amt) ((amt) < -127 ? -127 : ((amt) > 127 ? 127 : (amt)))
+
 
 static float accumulated_x = 0.0f;
 static float accumulated_y = 0.0f;
 static float accumulated_h = 0.0f;
 static float accumulated_v = 0.0f;
+static bool tb_state = false;
+static uint8_t pre_layer = 0; 
+trackball_mode_t tb_mode_r = TRACKBALL_CURSOR;
+trackball_mode_t tb_mode_l = TRACKBALL_TAP;
+
 static painter_device_t display;
 painter_font_handle_t noto11_font;
+painter_font_handle_t roboto_mono16;
+painter_font_handle_t st2_mono16;
 painter_image_handle_t qp_load_image_mem(const void *buffer);
 painter_image_handle_t image_logo;
 painter_image_handle_t image_save;
@@ -115,7 +130,6 @@ uint8_t y_pos4 = 165;
 static int16_t text1_width, text3_width, text4_width, text5_width, text6_width = 0;
 
 display_mode_t display_mode =  DISPLAY_MODE_TOUCH_KEY;
-CalibrationData calibration_data;
 bool enable_touch_update = true;
 
 static uint32_t blink_start_time = 0;
@@ -131,21 +145,18 @@ uint16_t single_touch_y;
 uint16_t pre_single_touch_x;
 uint16_t pre_single_touch_y;
 
-
-
 static const char *text1 = "TB TUNE";
 static const char *text3 = "Right";
 static const char *text4 = "Left";
 static const char *text5 = "+      +";
 static const char *text6 = "-      -";
 
-void process_cursor_report(report_mouse_t *mouse_report, pmw33xx_report_t report, float speed_adjust, uint8_t slope_factor){
+void process_cursor_report(report_mouse_t *mouse_report, pmw33xx_report_t report, float speed_adjust, uint8_t slope_factor, int rx, int ry, uint8_t cpi_scale) {
     if (!report.motion.b.is_lifted) {
-        int cpi_scale = 2; // 暫定で個の値、CPI含め見直してもいい
         float x = (report.delta_x / cpi_scale);
         float y = (report.delta_y / cpi_scale);
-        int sign_x = (x > 0) - (x < 0);
-        int sign_y = (y > 0) - (y < 0);
+        int sign_x = ((x > 0) - (x < 0)) * rx;
+        int sign_y = ((y > 0) - (y < 0)) * ry;
         float x_corr = pow(fabs(x), speed_adjust) / pow(127, speed_adjust) * 127 / 100 * slope_factor * sign_x;
         float y_corr = pow(fabs(y), speed_adjust) / pow(127, speed_adjust) * 127 / 100 * slope_factor * sign_y;
         accumulated_x += x_corr;
@@ -161,16 +172,15 @@ void process_cursor_report(report_mouse_t *mouse_report, pmw33xx_report_t report
     }
 }
 
-void process_tap_report(report_mouse_t *mouse_report, pmw33xx_report_t report, float speed_adjust, uint8_t slope_factor) {
+void process_tap_report(report_mouse_t *mouse_report, pmw33xx_report_t report, float speed_adjust, uint8_t slope_factor, int rx, int ry, uint8_t cpi_scale) {
     if (!report.motion.b.is_lifted) {
-        int cpi_scale = 40; // 暫定で個の値、CPI含め見直してもいい
         int x = (report.delta_x / cpi_scale);
         int y = (report.delta_y / cpi_scale);
-        int sign_x = (x > 0) - (x < 0);
-        int sign_y = (y > 0) - (y < 0);
+        int sign_x = ((x > 0) - (x < 0)) * rx;
+        int sign_y = ((y > 0) - (y < 0)) * ry;
         float x_corr = pow(fabs(x), speed_adjust) / pow(127, speed_adjust) * 127 / 100 * slope_factor * sign_x;
         float y_corr = pow(fabs(y), speed_adjust) / pow(127, speed_adjust) * 127 / 100 * slope_factor * sign_y;
-        const float diagonal_limit = 0.6f; // tan(26.57°) ≈ 0.5, 斜め動作を許容する範囲を狭める
+        const float diagonal_limit = 0.6f;
         float ratio = fabs(y_corr) / fabs(x_corr);
         if (ratio > diagonal_limit && ratio < (1.0f / diagonal_limit)) {
             return;
@@ -245,11 +255,11 @@ void draw_background_all_black(void) {
 }
 
 void initialize_lcd_layer_app_images(void) {
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 4; j++) {
-            lcd_layer_app_images[i][j][0] = (ImagePosition){get_layer_img_func(i*4 + j), home_point.x, home_point.y};
+    for (int j = 0; j < 4; j++) {
+        for (int i = 0; i < 3; i++) {
+            lcd_layer_app_images[i][j][0] = (ImagePosition){get_layer_img_func(i + j*3), home_point.x, home_point.y};
             for (int k = 0; k < 6; k++) {
-                lcd_layer_app_images[i][j][k + 1] = (ImagePosition){get_img_func(virtual_keycode[k + i*24 + j*6]), circles[k].x, circles[k].y};
+                lcd_layer_app_images[i][j][k + 1] = (ImagePosition){get_img_func(virtual_keycode[k + i*6 + j*18]), circles[k].x, circles[k].y};
             }
         }
     }
@@ -320,7 +330,6 @@ void change_swipe_layer(void) {
     swipe_layer = (swipe_layer + 1) % 4;
 }
 
-
 const char* get_layer_name(uint8_t layer) {
     switch (layer) {
         case 0:
@@ -330,19 +339,19 @@ const char* get_layer_name(uint8_t layer) {
         case 2:
             return "SYMB";
         case 3:
-            return "USER";
+            return "CUST";
         default:
-            return "Unkn";
+            return "UNKN";
     }
 }
 
 void swipe_gesture_main_view_update(uint8_t current_layer) {
     const char *layer_text = get_layer_name(current_layer);
     uint16_t layer_text_width = qp_textwidth(noto11_font, layer_text);
-    draw_background(90, 110, 150, 130); 
+    draw_background(85, 110, 155, 130); 
     qp_drawtext_recolor(display, 120 - layer_text_width / 2, 120 - noto11_font->line_height / 2, noto11_font, layer_text, hue_main_color, sat_main_color, val_main_color, hue_bg, sat_bg, val_bg);
     qp_flush(display);  
-}
+} 
 
 void swipe_gesture_base_view_update(void) {
     qp_donut(display, 120, 120, 117, 4, hue_main_color, sat_main_color, 50, val_main_color);
@@ -511,7 +520,7 @@ void process_touch(uint16_t touch_x, uint16_t touch_y) {
 }
 
 void process_gesture(cst816t_XY touch_data) {
-    // uprintf("g id: =%d}/\n", gesture_id);
+    // c
     if (gesture_id == CST816S_SLIDE_UP || gesture_id == CST816S_SLIDE_DOWN || gesture_id == CST816S_SLIDE_LEFT || gesture_id == CST816S_SLIDE_RIGHT) {
         if (display_mode == DISPLAY_MODE_TOUCH_KEY) {
             update_lcd_layer_category_by_gesture();
@@ -610,20 +619,42 @@ void load_virtual_keys(void) {
     }
 }
 
-void save_to_eeprom(void) {
-    calibration_data.speed_adjust1 = (int)round(speed_adjust1 * 10);
-    calibration_data.slope_factor1 = slope_factor1;
-    calibration_data.speed_adjust2 = (int)round(speed_adjust2 * 10);
-    calibration_data.slope_factor2 = slope_factor2;
-    eeprom_update_block((void *)&calibration_data, (void *)EEPROM_OMNI_TB, sizeof(calibration_data));
+void save_omni_color_config(void) {
+    dynamic_keymap_set_keycode(3,4,0, 0x7700 + hue_bg);
+    dynamic_keymap_set_keycode(3,4,1, 0x7700 + sat_bg);
+    dynamic_keymap_set_keycode(3,4,2, 0x7700 + val_bg);
+    dynamic_keymap_set_keycode(3,5,0, 0x7700 + hue_main_color);
+    dynamic_keymap_set_keycode(3,5,1, 0x7700 + sat_main_color);
+    dynamic_keymap_set_keycode(3,5,2, 0x7700 + val_main_color);
+    dynamic_keymap_set_keycode(3,5,3, 0x7700 + hue_sub_color);
+    dynamic_keymap_set_keycode(3,5,4, 0x7700 + sat_sub_color);
+    dynamic_keymap_set_keycode(3,5,5, 0x7700 + val_sub_color);
 }
 
-void load_from_eeprom(void) {
-    eeprom_read_block((void *)&calibration_data, (void *)EEPROM_OMNI_TB, sizeof(calibration_data));
-    speed_adjust1 = calibration_data.speed_adjust1 / 10.0f;
-    slope_factor1 = calibration_data.slope_factor1;
-    speed_adjust2 = calibration_data.speed_adjust2 / 10.0f;
-    slope_factor2 = calibration_data.slope_factor2;
+void load_omni_color_config(void) {
+    hue_bg = dynamic_keymap_get_keycode(3,4,0) - 0x7700;
+    sat_bg = dynamic_keymap_get_keycode(3,4,1) - 0x7700;
+    val_bg = dynamic_keymap_get_keycode(3,4,2) - 0x7700;
+    hue_main_color = dynamic_keymap_get_keycode(3,5,0) - 0x7700;
+    sat_main_color = dynamic_keymap_get_keycode(3,5,1) - 0x7700;
+    val_main_color = dynamic_keymap_get_keycode(3,5,2) - 0x7700;
+    hue_sub_color = dynamic_keymap_get_keycode(3,5,3) - 0x7700;
+    sat_sub_color = dynamic_keymap_get_keycode(3,5,4) - 0x7700;
+    val_sub_color = dynamic_keymap_get_keycode(3,5,5) - 0x7700;
+}
+
+void save_omni_tb_config(void) {
+    dynamic_keymap_set_keycode(3,7,0, 0x7700 + (int)round(speed_adjust1 * 10));
+    dynamic_keymap_set_keycode(3,7,1, 0x7700 + slope_factor1);
+    dynamic_keymap_set_keycode(3,7,2, 0x7700 + (int)round(speed_adjust2 * 10));
+    dynamic_keymap_set_keycode(3,7,3, 0x7700 + slope_factor2);
+}
+
+void load_omni_tb_config(void) {
+    speed_adjust1 =  dynamic_keymap_get_keycode(3,7,0) - 0x7700 / 10.0f;
+    slope_factor1 =  dynamic_keymap_get_keycode(3,7,1) - 0x7700;
+    speed_adjust2 =  dynamic_keymap_get_keycode(3,7,2) - 0x7700 / 10.0f;
+    slope_factor2 =  dynamic_keymap_get_keycode(3,7,3) - 0x7700;
     if (speed_adjust1 > 3.0f || speed_adjust1 < 0.1f) {
         speed_adjust1 = DEFAULT_SPEED_ADJUST1;
     }
@@ -635,47 +666,6 @@ void load_from_eeprom(void) {
     }
     if (slope_factor2 > 100 || slope_factor2 < 10) {
         slope_factor2= DEFAULT_SLOPE_FACTOR2;
-    }
-}
-
-ColorData color_data;
-
-void save_omni_config(void) {
-    color_data.hue1 = hue_bg;
-    color_data.sat1 = sat_bg;
-    color_data.val1 = val_bg;
-    color_data.hue2 = hue_main_color;
-    color_data.sat2 = sat_main_color;
-    color_data.val2 = val_main_color;
-    color_data.hue3 = hue_sub_color;
-    color_data.sat3 = sat_sub_color;
-    color_data.val3 = val_sub_color;
-    eeprom_update_block((void *)&color_data, (void *)EEPROM_OMNI_COLORS, sizeof(color_data));
-    eeconfig_update_user(1);
-}
-
-void load_omni_config(void) {
-    eeprom_read_block((void *)&color_data, (void *)EEPROM_OMNI_COLORS, sizeof(color_data));
-    hue_bg = color_data.hue1;
-    sat_bg = color_data.sat1;
-    val_bg = color_data.val1;
-    if (color_data.hue2 == 0 && color_data.sat2 == 0 && color_data.val2 == 0) {
-        hue_main_color = 255;
-        sat_main_color = 0;
-        val_main_color = 255;
-    } else {
-        hue_main_color = color_data.hue2;
-        sat_main_color = color_data.sat2;
-        val_main_color = color_data.val2;
-    }
-    if (color_data.hue3 == 0 && color_data.sat3 == 0 && color_data.val3 == 0) {
-        hue_sub_color = 255;
-        sat_sub_color = 0;
-        val_sub_color = 255;
-    } else {
-        hue_sub_color = color_data.hue3;
-        sat_sub_color = color_data.sat3;
-        val_sub_color = color_data.val3;
     }
 }
 
@@ -740,6 +730,9 @@ void display_redraw(void) {
             swipe_gesture_base_view_update();
             swipe_gesture_main_view_update(current_lcd_layer);
             break;
+        case DISPLAY_MODE_KEY_MATRIX:
+            draw_key_matrix(display, roboto_mono16, st2_mono16, current_layer);
+            break;
         default:
             break;
     }
@@ -790,7 +783,7 @@ void process_touch_trackball_tuning_mode(uint16_t touch_x, uint16_t touch_y) {
         if (slope_factor2 < 10) slope_factor2 = 10;
     }
     else if (is_touch_in_circle(touch_x, touch_y, save_center, radius)) {
-        save_to_eeprom();
+        save_omni_tb_config();
         show_trackball_tuning_mode();
     }
     if (pre_speed_adjust1 != speed_adjust1 || pre_slope_factor1 != slope_factor1) {
@@ -869,11 +862,13 @@ void keyboard_post_init_kb(void) {
     if (!eeconfig_is_enabled()) {
         eeconfig_init();
     }
-    load_from_eeprom(); 
-    load_omni_config();
+    load_omni_tb_config(); 
+    load_omni_color_config();
     display = qp_gc9a01_make_spi_device(240, 240, CS_PIN, DC_PIN, RST_PIN, 4, 0); // パネル幅, パネル高さ,,,,SPIディバイザ,SPIモード
     qp_init(display, QP_ROTATION_0);
     noto11_font = qp_load_font_mem(font_noto11); 
+    roboto_mono16 = qp_load_font_mem(font_roboto_mono16); 
+    st2_mono16 = qp_load_font_mem(font_st2_mono16); 
     uint8_t init_status = cst816t_init(2);
     if (init_status == 0) {
         uprintf("Touch initialization failed.\n");
@@ -899,27 +894,53 @@ void matrix_init_user(void) {
     initialize_lcd_layer_app_images();
 }
 
-static bool tb_state = false;
-static uint8_t pre_layer = 0; 
 
 report_mouse_t  pointing_device_task_kb(report_mouse_t mouse_report) {
-    pmw33xx_report_t report0 = pmw33xx_read_burst(0); // Sensor #1
-    pmw33xx_report_t report1 = pmw33xx_read_burst(1); // Sensor #2
-    uint8_t current_layer = get_highest_layer(layer_state);
+
+
+    current_layer = get_highest_layer(layer_state);
     if(display_mode == DISPLAY_MODE_SWIPE_GESTURE) {
         if (current_layer != pre_layer) {
             swipe_gesture_main_view_update(current_layer);
         }
+    } else if (display_mode ==  DISPLAY_MODE_KEY_MATRIX) {
+        if (!get_auto_mouse_enable()) {
+            if(current_layer != pre_layer){
+                draw_key_matrix(display, roboto_mono16, st2_mono16, current_layer);
+            }            
+        } else {
+            if (current_layer != 3){
+                if(pre_layer !=  3){
+                    if(current_layer != pre_layer){
+                        draw_key_matrix(display, roboto_mono16, st2_mono16, current_layer);
+                    }
+                }
+            }
+        }
     }
     pre_layer = current_layer;
+
+    pmw33xx_report_t report0 = pmw33xx_read_burst(0); // Sensor #1
+    pmw33xx_report_t report1 = pmw33xx_read_burst(1); // Sensor #2
 
     if (report0.motion.b.is_motion || report1.motion.b.is_motion) {
         tb_state = true;
     }else {
         tb_state = false;
     }
-    process_cursor_report(&mouse_report, report0, speed_adjust1, slope_factor1);
-    process_tap_report(&mouse_report, report1, speed_adjust2, slope_factor2);
+
+    if (tb_mode_r == TRACKBALL_CURSOR){
+        process_cursor_report(&mouse_report, report0, speed_adjust1, slope_factor1, 1, 1, 2);
+    } else if (tb_mode_r == TRACKBALL_TAP) {
+        process_tap_report(&mouse_report, report0, speed_adjust2, slope_factor2, -1, -1, 40);
+    }
+
+    if (tb_mode_l == TRACKBALL_CURSOR){
+        process_cursor_report(&mouse_report, report1, speed_adjust1, slope_factor1, -1, -1, 4);
+    } else if (tb_mode_l == TRACKBALL_TAP) {
+        process_tap_report(&mouse_report, report1, speed_adjust2, slope_factor2, 1, 1, 40);
+    }
+
     if (ENABLE_TOUCH_UPDATE == 1) {
         if (touch_signal_view_update) {
             if (!is_backlight_off) {
@@ -998,23 +1019,28 @@ void housekeeping_task_user(void) {
     sleeping_kb(matrix_changed);
 }
 
+
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
-    if (!record->event.pressed) return true;
+    if (!record->event.pressed) {
+        tb_mode_l = TRACKBALL_TAP;
+        tb_mode_r = TRACKBALL_CURSOR;
+        return true;
+    }
     switch (keycode) {
         case KC_hue_bg_UP:
             hue_bg = (hue_bg + 16) % 256;
             break;
         case KC_hue_bg_DOWN:
-            hue_bg = (hue_bg >= 16) ? (hue_bg - 16) : (hue_bg + 240); // 0を下回ったら240を足す
+            hue_bg = (hue_bg >= 16) ? (hue_bg - 16) : (hue_bg + 240); 
             break;
         case KC_sat_bg_UP:
-            sat_bg = (sat_bg < 240) ? sat_bg + 16 : 255;
+            sat_bg = (sat_bg + 16 <= 254) ? sat_bg + 16 : 254;
             break;
         case KC_sat_bg_DOWN:
             sat_bg = (sat_bg > 16) ? sat_bg - 16 : 0;
             break;
         case KC_val_bg_UP:
-            val_bg = (val_bg < 240) ? val_bg + 16 : 255;
+            val_bg = (val_bg + 16 <= 254) ? val_bg + 16 : 254;
             break;
         case KC_val_bg_DOWN:
             val_bg = (val_bg > 16) ? val_bg - 16 : 0;
@@ -1026,13 +1052,13 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
             hue_main_color = (hue_main_color >= 16) ? (hue_main_color - 16) : (hue_main_color + 240);
             break;
         case KC_sat_main_color_UP:
-            sat_main_color = (sat_main_color < 240) ? sat_main_color + 16 : 255;
+            sat_main_color = (sat_main_color + 16 <= 254) ? sat_main_color + 16 : 254;
             break;
         case KC_sat_main_color_DOWN:
             sat_main_color = (sat_main_color > 16) ? sat_main_color - 16 : 0;
             break;
         case KC_val_main_color_UP:
-            val_main_color = (val_main_color < 240) ? val_main_color + 16 : 255;
+            val_main_color = (val_main_color + 16 <= 254) ? val_main_color + 16 : 254;
             break;
         case KC_val_main_color_DOWN:
             val_main_color = (val_main_color > 16) ? val_main_color - 16 : 0;
@@ -1044,25 +1070,67 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
             hue_sub_color = (hue_sub_color >= 16) ? (hue_sub_color - 16) : (hue_sub_color + 240);
             break;
         case KC_sat_sub_color_UP:
-            sat_sub_color = (sat_sub_color < 240) ? sat_sub_color + 16 : 255;
+            sat_sub_color = (sat_sub_color + 16 <= 254) ? sat_sub_color + 16 : 254;
             break;
         case KC_sat_sub_color_DOWN:
             sat_sub_color = (sat_sub_color > 16) ? sat_sub_color - 16 : 0;
             break;
         case KC_val_sub_color_UP:
-            val_sub_color = (val_sub_color < 240) ? val_sub_color + 16 : 255;
+            val_sub_color = (val_sub_color + 16 <= 254) ? val_sub_color + 16 : 254;
             break;
         case KC_val_sub_color_DOWN:
             val_sub_color = (val_sub_color > 16) ? val_sub_color - 16 : 0;
             break;
+        case AUTO_MOUSE_TOGGLE:
+            if (dynamic_keymap_get_keycode(3,9,0) == 0x7700) {
+                dynamic_keymap_set_keycode(3,9,0, 0x7701);
+                set_auto_mouse_enable(true);
+            } else if (dynamic_keymap_get_keycode(3,9,0) == 0x7701) {
+                dynamic_keymap_set_keycode(3,9,0, 0x7700);
+                set_auto_mouse_enable(false);
+            }
+            break;
+        case TB_R_MODE_TOGGLE:
+            if (record->event.pressed) {
+                tb_mode_r = TRACKBALL_TAP;
+            } else {
+                tb_mode_r = TRACKBALL_CURSOR;
+            }
+            return false;
+        case TB_L_MODE_TOGGLE:
+            tb_mode_l = TRACKBALL_CURSOR;
+            return false;
+
+        case KC_DP_TOUCH_KEY:
+            display_mode =  DISPLAY_MODE_TOUCH_KEY;
+            draw_background_all_black();
+            draw_lcd_layer_category_images();
+            break;
+        case KC_DP_TB_TUNE: 
+            display_mode =  DISPLAY_MODE_TRACKBALL_TUNING;
+            show_trackball_tuning_mode();
+            break;
+        case KC_DP_SWIPE_GESTURE:
+            display_mode =  DISPLAY_MODE_SWIPE_GESTURE;
+            draw_background_all();
+            swipe_gesture_layer_view_update();
+            swipe_gesture_base_view_update();
+            swipe_gesture_main_view_update(current_lcd_layer);
+            break;
+        case KC_DP_KEY_MAT:
+            display_mode =  DISPLAY_MODE_KEY_MATRIX;
+            draw_key_matrix(display, roboto_mono16, st2_mono16, current_layer);
+            break;
         default:
             return true;
     }
-    save_omni_config();
-    draw_background_all();
-    swipe_gesture_base_view_update();
-    swipe_gesture_main_view_update(current_lcd_layer);
-    swipe_gesture_layer_view_update();
+    if(display_mode == DISPLAY_MODE_SWIPE_GESTURE) {
+        save_omni_color_config();
+        draw_background_all();
+        swipe_gesture_base_view_update();
+        swipe_gesture_main_view_update(current_lcd_layer);
+        swipe_gesture_layer_view_update();
+    }
     return false;
 }
 
