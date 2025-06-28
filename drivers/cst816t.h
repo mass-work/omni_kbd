@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #define CST816S_ADDR (0x15 << 1)  // 7ビットアドレスを左シフト
 
@@ -93,3 +94,6 @@ typedef enum {
 
 uint8_t cst816t_init(uint8_t mode);
 cst816t_XY cst816t_Get_Point(void);
+
+// add
+bool get_finger_present(bool prev_state);

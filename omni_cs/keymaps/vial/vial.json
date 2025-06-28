@@ -27,6 +27,8 @@
   { "name": "Auto Mouse", "title": "Toggle automatic mouse control", "shortName": "AmlTg" },
   { "name": "Right TB Mode", "title": "Toggle right trackball mode", "shortName": "TbrCg" },
   { "name": "Left TB Mode", "title": "Toggle left trackball mode", "shortName": "TblCg" },
+  { "name": "UD Scroll change", "title": "Toggle UD scroll", "shortName": "UDSc" },
+  { "name": "LR Scroll change", "title": "Toggle LR scroll", "shortName": "LRSc" },
 
   { "name": "Touch Key", "title": "Activate touch key mode", "shortName": "TcKey" },
   { "name": "TB Tune", "title": "Activate trackball tuning mode", "shortName": "TbTun" },

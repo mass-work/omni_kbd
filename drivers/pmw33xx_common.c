@@ -16,8 +16,8 @@
 #include "spi_master.h"
 #include "progmem.h"
 
-extern const uint8_t pmw33xx_firmware_data[PMW33XX_FIRMWARE_LENGTH] PROGMEM;
-extern const uint8_t pmw33xx_firmware_signature[3] PROGMEM;
+// extern const uint8_t pmw33xx_firmware_data[PMW33XX_FIRMWARE_LENGTH] PROGMEM;
+// extern const uint8_t pmw33xx_firmware_signature[3] PROGMEM;
 
 static const pin_t cs_pins_left[]  = PMW33XX_CS_PINS;
 static const pin_t cs_pins_right[] = PMW33XX_CS_PINS_RIGHT;
@@ -25,8 +25,10 @@ static const pin_t cs_pins_right[] = PMW33XX_CS_PINS_RIGHT;
 static bool in_burst_left[ARRAY_SIZE(cs_pins_left)]   = {0};
 static bool in_burst_right[ARRAY_SIZE(cs_pins_right)] = {0};
 
-bool __attribute__((cold)) pmw33xx_upload_firmware(uint8_t sensor);
-bool __attribute__((cold)) pmw33xx_check_signature(uint8_t sensor);
+// bool __attribute__((cold)) pmw33xx_upload_firmware(uint8_t sensor);
+// bool __attribute__((cold)) pmw33xx_check_signature(uint8_t sensor);
+static inline bool pmw33xx_check_signature(uint8_t s) { return true; }
+static inline bool pmw33xx_upload_firmware(uint8_t s) { return true; }
 
 void pmw33xx_set_cpi_all_sensors(uint16_t cpi) {
     for (uint8_t sensor = 0; sensor < pmw33xx_number_of_sensors; sensor++) {
@@ -89,44 +91,44 @@ uint8_t pmw33xx_read(uint8_t sensor, uint8_t reg_addr) {
     return data;
 }
 
-bool pmw33xx_check_signature(uint8_t sensor) {
-    uint8_t signature_dump[3] = {
-        pmw33xx_read(sensor, REG_Product_ID),
-        pmw33xx_read(sensor, REG_Inverse_Product_ID),
-        pmw33xx_read(sensor, REG_SROM_ID),
-    };
+// bool pmw33xx_check_signature(uint8_t sensor) {
+//     uint8_t signature_dump[3] = {
+//         pmw33xx_read(sensor, REG_Product_ID),
+//         pmw33xx_read(sensor, REG_Inverse_Product_ID),
+//         pmw33xx_read(sensor, REG_SROM_ID),
+//     };
 
-    return memcmp(pmw33xx_firmware_signature, signature_dump, sizeof(signature_dump)) == 0;
-}
+//     return memcmp(pmw33xx_firmware_signature, signature_dump, sizeof(signature_dump)) == 0;
+// }
 
-bool pmw33xx_upload_firmware(uint8_t sensor) {
-    // Datasheet claims we need to disable REST mode first, but during startup
-    // it's already disabled and we're not turning it on ...
-    // pmw33xx_write(REG_Config2, 0x00);  // disable REST mode
-    if (!pmw33xx_write(sensor, REG_SROM_Enable, 0x1d)) {
-        return false;
-    }
-    wait_ms(10);
-    pmw33xx_write(sensor, REG_SROM_Enable, 0x18);
+// bool pmw33xx_upload_firmware(uint8_t sensor) {
+//     // Datasheet claims we need to disable REST mode first, but during startup
+//     // it's already disabled and we're not turning it on ...
+//     // pmw33xx_write(REG_Config2, 0x00);  // disable REST mode
+//     if (!pmw33xx_write(sensor, REG_SROM_Enable, 0x1d)) {
+//         return false;
+//     }
+//     wait_ms(10);
+//     pmw33xx_write(sensor, REG_SROM_Enable, 0x18);
 
-    if (!pmw33xx_spi_start(sensor)) {
-        return false;
-    }
+//     if (!pmw33xx_spi_start(sensor)) {
+//         return false;
+//     }
 
-    spi_write(REG_SROM_Load_Burst | 0x80);
-    wait_us(15);
+//     spi_write(REG_SROM_Load_Burst | 0x80);
+//     wait_us(15);
 
-    for (size_t i = 0; i < PMW33XX_FIRMWARE_LENGTH; i++) {
-        spi_write(pgm_read_byte(pmw33xx_firmware_data + i));
-        wait_us(15);
-    }
-    wait_us(200);
+//     for (size_t i = 0; i < PMW33XX_FIRMWARE_LENGTH; i++) {
+//         spi_write(pgm_read_byte(pmw33xx_firmware_data + i));
+//         wait_us(15);
+//     }
+//     wait_us(200);
 
-    pmw33xx_read(sensor, REG_SROM_ID);
-    pmw33xx_write(sensor, REG_Config2, 0x00);
+//     pmw33xx_read(sensor, REG_SROM_ID);
+//     pmw33xx_write(sensor, REG_Config2, 0x00);
 
-    return true;
-}
+//     return true;
+// }
 
 bool pmw33xx_init(uint8_t sensor) {
     if (sensor >= pmw33xx_number_of_sensors) {
@@ -155,10 +157,10 @@ bool pmw33xx_init(uint8_t sensor) {
     pmw33xx_read(sensor, REG_Delta_Y_L);
     pmw33xx_read(sensor, REG_Delta_Y_H);
 
-    if (!pmw33xx_upload_firmware(sensor)) {
-        pd_dprintf("PMW33XX (%d): firmware upload failed!\n", sensor);
-        return false;
-    }
+    // if (!pmw33xx_upload_firmware(sensor)) {
+    //     pd_dprintf("PMW33XX (%d): firmware upload failed!\n", sensor);
+    //     return false;
+    // }
 
     spi_stop();
 
@@ -171,10 +173,10 @@ bool pmw33xx_init(uint8_t sensor) {
     pmw33xx_write(sensor, REG_Angle_Tune, CONSTRAIN(ROTATIONAL_TRANSFORM_ANGLE, -127, 127));
     pmw33xx_write(sensor, REG_Lift_Config, PMW33XX_LIFTOFF_DISTANCE);
 
-    if (!pmw33xx_check_signature(sensor)) {
-        pd_dprintf("PMW33XX (%d): firmware signature verification failed!\n", sensor);
-        return false;
-    }
+    // if (!pmw33xx_check_signature(sensor)) {
+    //     pd_dprintf("PMW33XX (%d): firmware signature verification failed!\n", sensor);
+    //     return false;
+    // }
 
     return true;
 }

@@ -10,6 +10,7 @@ qmk painter-convert-graphics -f mono2 -i layer_08.png -o ./generated/
 qmk painter-convert-graphics -f mono2 -i layer_09.png -o ./generated/
 qmk painter-convert-graphics -f mono2 -i layer_10.png -o ./generated/
 qmk painter-convert-graphics -f mono2 -i layer_11.png -o ./generated/
+qmk painter-convert-graphics -f mono2 -i omni_logo.gif -o ./generated/
 
 qmk painter-convert-graphics -f pal16 -i 081.png -o ./generated/
 qmk painter-convert-graphics -f pal16 -i 082.png -o ./generated/
@@ -17,3 +18,4 @@ qmk painter-convert-graphics -f pal16 -i 083.png -o ./generated/
 qmk painter-convert-graphics -f pal16 -i 084.png -o ./generated/
 qmk painter-convert-graphics -f pal16 -i 085.png -o ./generated/
 qmk painter-convert-graphics -f pal16 -i 086.png -o ./generated/
+qmk painter-convert-graphics -f pal16 -i 087.png -o ./generated/

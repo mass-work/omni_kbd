@@ -17,7 +17,7 @@
 #define PMW33XX_CPI_MIN 100
 #define PMW33XX_CPI_MAX 12000
 
-#define PMW33XX_FIRMWARE_LENGTH 4094
+// #define PMW33XX_FIRMWARE_LENGTH 4094
 
 // PMW3360 register addresses
 // clang-format off

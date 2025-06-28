@@ -131,4 +131,3 @@ SRC += ../customfunc/get_custom_gesture.c
 
 SRC += ../customfunc/sleeping_view.c
 SRC += ../customfunc/view_keymap.c
-

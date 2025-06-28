@@ -57,8 +57,6 @@ uint32_t sleeping_timer;
 bool matrix_changed = false;
 bool sleeping_state = false;
 
-
-
 static float accumulated_x = 0.0f;
 static float accumulated_y = 0.0f;
 static float accumulated_h = 0.0f;
@@ -94,9 +92,7 @@ uint8_t gesture_id = GESTURE_NONE;
 uint16_t touch_x = 0xFFFF;
 uint16_t touch_y = 0xFFFF;
 void process_touch_trackball_tuning_mode(uint16_t touch_x, uint16_t touch_y);
-static uint16_t long_touch_time = 0;
 static uint16_t last_touch_time = 0;
-static uint16_t last_swipe_gesture_time = 0;
 uint16_t current_time = 0;
 static uint16_t last_tap_time = 0;
 bool touch_signal = false;
@@ -136,20 +132,17 @@ static uint32_t blink_start_time = 0;
 static bool is_backlight_off = false;
 bool lcd_is_on = true;
 uint32_t last_usb_check_time = 0;
-
-bool single_click_flag = false;
-uint8_t single_click_counter = 0;
-uint16_t single_click_timer;
-uint16_t single_touch_x;
-uint16_t single_touch_y;
-uint16_t pre_single_touch_x;
-uint16_t pre_single_touch_y;
+uint16_t pre_touch_x;
+uint16_t pre_touch_y;
 
 static const char *text1 = "TB TUNE";
 static const char *text3 = "Right";
 static const char *text4 = "Left";
 static const char *text5 = "+      +";
 static const char *text6 = "-      -";
+
+int8_t ud_sc_mode_flag = 1;
+int8_t lr_sc_mode_flag = 1;
 
 void process_cursor_report(report_mouse_t *mouse_report, pmw33xx_report_t report, float speed_adjust, uint8_t slope_factor, int rx, int ry, uint8_t cpi_scale) {
     if (!report.motion.b.is_lifted) {
@@ -176,8 +169,8 @@ void process_tap_report(report_mouse_t *mouse_report, pmw33xx_report_t report, f
     if (!report.motion.b.is_lifted) {
         int x = (report.delta_x / cpi_scale);
         int y = (report.delta_y / cpi_scale);
-        int sign_x = ((x > 0) - (x < 0)) * rx;
-        int sign_y = ((y > 0) - (y < 0)) * ry;
+        int sign_x = ((x > 0) - (x < 0)) * rx * lr_sc_mode_flag;
+        int sign_y = ((y > 0) - (y < 0)) * ry * ud_sc_mode_flag;
         float x_corr = pow(fabs(x), speed_adjust) / pow(127, speed_adjust) * 127 / 100 * slope_factor * sign_x;
         float y_corr = pow(fabs(y), speed_adjust) / pow(127, speed_adjust) * 127 / 100 * slope_factor * sign_y;
         const float diagonal_limit = 0.6f;
@@ -398,8 +391,6 @@ void swipe_gesture_layer_view_update(void){
 }
 
 void swipe_gesture_process(void) {
-    if (timer_elapsed(last_swipe_gesture_time) > SWIPE_GESTURE_DEBOUNCE_TIME) {
-        last_swipe_gesture_time = timer_read();
         switch (swipe_layer) {
             case 0:
                 switch (gesture_id) {
@@ -504,7 +495,7 @@ void swipe_gesture_process(void) {
             default:
                 break;
         }
-    }
+    // }
 
 }
 
@@ -519,15 +510,40 @@ void process_touch(uint16_t touch_x, uint16_t touch_y) {
     touch_signal_view_update = true;
 }
 
+uint16_t touch_start_timer = 0;
+bool touch_start_flag = false; 
+
+uint8_t classify_gesture(uint16_t x_start, uint16_t y_start, uint16_t x_last,  uint16_t y_last){
+    if (gesture_id == CST816S_SLIDE_LEFT || gesture_id == CST816S_SLIDE_RIGHT || gesture_id == CST816S_SLIDE_UP || gesture_id == CST816S_SLIDE_DOWN) {
+        return gesture_id;
+    }
+    uint16_t dx = (x_last > x_start) ? (x_last - x_start) : (x_start - x_last);
+    uint16_t dy = (y_last > y_start) ? (y_last - y_start) : (y_start - y_last);
+
+    if (dx < TAP_DIST_PX && dy < TAP_DIST_PX) {
+        return CST816S_CLICK;
+    }
+    
+    if (dx > dy && dx > SWIPE_DIST_PX) {
+        return (x_last > x_start) ? CST816S_SLIDE_LEFT : CST816S_SLIDE_RIGHT;
+    }
+        if (dy > SWIPE_DIST_PX) {
+        return (y_last > y_start) ? CST816S_SLIDE_UP : CST816S_SLIDE_DOWN;
+    }
+
+    return GESTURE_NONE;
+}
+
 void process_gesture(cst816t_XY touch_data) {
-    // c
+    // uprintf("x,y: %d, %d\n", touch_data.x_point, touch_data.y_point); 
+
     if (gesture_id == CST816S_SLIDE_UP || gesture_id == CST816S_SLIDE_DOWN || gesture_id == CST816S_SLIDE_LEFT || gesture_id == CST816S_SLIDE_RIGHT) {
         if (display_mode == DISPLAY_MODE_TOUCH_KEY) {
             update_lcd_layer_category_by_gesture();
         } else if (display_mode == DISPLAY_MODE_SWIPE_GESTURE) {
             swipe_gesture_process();
         }
-    }else if (gesture_id == CST816S_CLICK) {
+    } else if (gesture_id == CST816S_CLICK) {
         switch (display_mode) {
             case DISPLAY_MODE_TOUCH_KEY:
                 process_touch(touch_x, touch_y);
@@ -543,60 +559,72 @@ void process_gesture(cst816t_XY touch_data) {
             default:
                 break;
         }
-    } else if (gesture_id == CST816S_LONG_PRESS) {
-        if (timer_elapsed(long_touch_time) > LONG_TOUCH_TIME) {
-            switch_display_mode();
-            display_redraw();
-            long_touch_time = timer_read();
-        }
-    }
+    } 
 }
+
+
+static bool finger_prev = false;
+static bool finger_prev_flag = false;
+uint16_t finger_prev_timer = 0;
 
 void process_touch_interrupt(void) {
     uint8_t interrupt_pin = readPin(INT_PIN);
-    if (interrupt_pin == 0) {
-        single_click_flag = true;
-        single_click_timer = timer_read();
-        cst816t_XY touch_data = cst816t_Get_Point();
-        touch_x = touch_data.x_point;
-        touch_y = touch_data.y_point;
-        single_touch_x = touch_x;
-        single_touch_y = touch_y;
-        gesture_id = touch_data.Gesture;
-        if (gesture_id != 0) {
-            single_click_flag = false;
-        }
-        if (pre_single_touch_x != single_touch_x || pre_single_touch_y != single_touch_y){
-            single_click_flag = false;
-        }
-        pre_single_touch_x = single_touch_x;
-        pre_single_touch_y = single_touch_y;
-        process_gesture(touch_data);
-
-    } else {
-    if (single_click_flag) {
-        if (timer_elapsed(single_click_timer) > SINGLE_CLICK_TIME) {
-            touch_x = single_touch_x;
-            touch_y = single_touch_y;
-            single_click_flag = false;
-            last_tap_time = timer_read();
-            switch (display_mode) {
-                case DISPLAY_MODE_TOUCH_KEY:
-                    process_touch(touch_x, touch_y);
-                    break;
-                case DISPLAY_MODE_TRACKBALL_TUNING:
-                    if (timer_elapsed(last_touch_time) > TOUCH_DEBOUNCE_TIME) {
-                        last_touch_time = timer_read();
-                        process_touch_trackball_tuning_mode(touch_x, touch_y);
-                    }
-                    break;
-                default:
-                    break;
+    if (finger_prev_flag) {
+        if (timer_elapsed(finger_prev_timer) > 70) {
+            finger_prev = get_finger_present(finger_prev);
+            finger_prev_flag = false;
+            if (finger_prev + gesture_id == 0) {
+                switch (display_mode) {
+                    case DISPLAY_MODE_TOUCH_KEY:
+                        process_touch(touch_x, touch_y);
+                        break;
+        
+                    case DISPLAY_MODE_TRACKBALL_TUNING:
+                        if (timer_elapsed(last_touch_time) > TOUCH_DEBOUNCE_TIME) {
+                            last_touch_time = timer_read();
+                            process_touch_trackball_tuning_mode(touch_x, touch_y);
+                        }
+                        break;
+        
+                    default:
+                        break;
+                }
             }
+            // uprintf("finger_prev: %d\n", finger_prev);
+            // uprintf("gesture: %d\n", gesture_id);
         }
     }
-    if (timer_elapsed(last_tap_time) > TOUCH_DEBOUNCE_TIME) {
-            touch_signal = false;
+    
+    if (interrupt_pin == 0) {
+        finger_prev_timer = timer_read();
+        finger_prev_flag = true;
+        finger_prev = get_finger_present(finger_prev);
+        
+        if(!touch_start_flag) {
+            touch_start_timer = timer_read();
+            touch_start_flag = true;
+            cst816t_XY touch_data = cst816t_Get_Point();
+            pre_touch_x = touch_data.x_point;
+            pre_touch_y = touch_data.y_point;
+            // uprintf("g id: %d\n", pre_touch_y); 
+            return;
+        }
+
+        if (timer_elapsed(touch_start_timer) >= TOUCH_TIME_MS) {
+            cst816t_XY touch_data = cst816t_Get_Point(); 
+            touch_x = touch_data.x_point;
+            touch_y = touch_data.y_point;
+            gesture_id = classify_gesture(touch_x, touch_y, pre_touch_x,  pre_touch_y);
+            touch_start_timer = timer_read();
+            pre_touch_x = touch_x;
+            pre_touch_y = touch_y;
+            // uprintf("g id: %d\n", gesture_id); 
+            process_gesture(touch_data);
+        }
+
+    } else  {
+        if (timer_elapsed(last_tap_time) > TOUCH_DEBOUNCE_TIME - 50) {
+                touch_signal = false;
         }
     }
 }
@@ -651,9 +679,9 @@ void save_omni_tb_config(void) {
 }
 
 void load_omni_tb_config(void) {
-    speed_adjust1 =  dynamic_keymap_get_keycode(3,7,0) - 0x7700 / 10.0f;
+    speed_adjust1 =  (dynamic_keymap_get_keycode(3,7,0) - 0x7700) / 10.0f;
     slope_factor1 =  dynamic_keymap_get_keycode(3,7,1) - 0x7700;
-    speed_adjust2 =  dynamic_keymap_get_keycode(3,7,2) - 0x7700 / 10.0f;
+    speed_adjust2 =  (dynamic_keymap_get_keycode(3,7,2) - 0x7700) / 10.0f;
     slope_factor2 =  dynamic_keymap_get_keycode(3,7,3) - 0x7700;
     if (speed_adjust1 > 3.0f || speed_adjust1 < 0.1f) {
         speed_adjust1 = DEFAULT_SPEED_ADJUST1;
@@ -667,6 +695,20 @@ void load_omni_tb_config(void) {
     if (slope_factor2 > 100 || slope_factor2 < 10) {
         slope_factor2= DEFAULT_SLOPE_FACTOR2;
     }
+
+
+    if (dynamic_keymap_get_keycode(3,8,0) == 0x7701) {
+        ud_sc_mode_flag = -1;
+    } else if (dynamic_keymap_get_keycode(3,8,0) == 0x7700) {
+        ud_sc_mode_flag = 1;
+    }
+
+    if (dynamic_keymap_get_keycode(3,8,1) == 0x7701) {
+        lr_sc_mode_flag = -1;
+    } else if (dynamic_keymap_get_keycode(3,8,1) == 0x7700) {
+        lr_sc_mode_flag = 1;
+    }
+
 }
 
 void show_trackball_tuning_mode(void) {
@@ -697,22 +739,6 @@ void show_trackball_tuning_mode(void) {
     qp_curve(display, speed_adjust2, slope_factor2, hue_tbtune_l, sat_tbtune_l, val_tbtune_l, x_pos2, y_pos2);
     qp_drawimage(display, 120 - image_save->width/2, 210 - image_save->height/2, image_save);
     qp_flush(display);
-}
-
-void switch_display_mode(void) {
-    switch (display_mode) {
-        case DISPLAY_MODE_TOUCH_KEY:
-            display_mode = DISPLAY_MODE_TRACKBALL_TUNING;
-            break;
-        case DISPLAY_MODE_TRACKBALL_TUNING:
-            display_mode = DISPLAY_MODE_SWIPE_GESTURE;
-            break;
-        case DISPLAY_MODE_SWIPE_GESTURE:
-            display_mode = DISPLAY_MODE_TOUCH_KEY;
-            break;
-        default:
-            break;
-    }
 }
 
 void display_redraw(void) {
@@ -853,8 +879,8 @@ void manage_lcd_power(int8_t usb_state) {
 void pointing_device_init_kb(void) {
     pmw33xx_init(0);         
     pmw33xx_init(1);         
-    pmw33xx_set_cpi(0, 4000); // cpiを変更するときはcpi_scaleも見直すこと
-    pmw33xx_set_cpi(1, 10000); // cpiを変更するときはcpi_scaleも見直すこと
+    pmw33xx_set_cpi(0, 3000);
+    pmw33xx_set_cpi(1, 3000);
     pointing_device_init_user();
 }
 
@@ -897,7 +923,6 @@ void matrix_init_user(void) {
 
 report_mouse_t  pointing_device_task_kb(report_mouse_t mouse_report) {
 
-
     current_layer = get_highest_layer(layer_state);
     if(display_mode == DISPLAY_MODE_SWIPE_GESTURE) {
         if (current_layer != pre_layer) {
@@ -932,13 +957,13 @@ report_mouse_t  pointing_device_task_kb(report_mouse_t mouse_report) {
     if (tb_mode_r == TRACKBALL_CURSOR){
         process_cursor_report(&mouse_report, report0, speed_adjust1, slope_factor1, 1, 1, 2);
     } else if (tb_mode_r == TRACKBALL_TAP) {
-        process_tap_report(&mouse_report, report0, speed_adjust2, slope_factor2, -1, -1, 40);
+        process_tap_report(&mouse_report, report0, speed_adjust2, slope_factor2, -1, -1, 10);
     }
 
     if (tb_mode_l == TRACKBALL_CURSOR){
-        process_cursor_report(&mouse_report, report1, speed_adjust1, slope_factor1, -1, -1, 4);
+        process_cursor_report(&mouse_report, report1, speed_adjust1, slope_factor1, -1, -1, 2);
     } else if (tb_mode_l == TRACKBALL_TAP) {
-        process_tap_report(&mouse_report, report1, speed_adjust2, slope_factor2, 1, 1, 40);
+        process_tap_report(&mouse_report, report1, speed_adjust2, slope_factor2, 1, 1, 10);
     }
 
     if (ENABLE_TOUCH_UPDATE == 1) {
@@ -972,7 +997,7 @@ void matrix_scan_user(void) {
 }
 
 void sleeping_kb(bool matrix_changed) {
-    if (matrix_changed || tb_state || single_click_flag) {
+    if (matrix_changed || tb_state || touch_start_flag){ 
         sleeping_timer = timer_read();
         if (sleeping_state) {
             if (!lcd_is_on){
@@ -1017,6 +1042,13 @@ void housekeeping_task_user(void) {
     }
     matrix_changed = get_last_matrix_state();
     sleeping_kb(matrix_changed);
+
+    if (touch_start_flag) {
+        if (timer_elapsed(touch_start_timer) >= TOUCH_DEBOUNCE_TIME) {
+            touch_start_flag = false;
+            gesture_id = GESTURE_NONE;
+        }   
+    }
 }
 
 
@@ -1101,6 +1133,26 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
             tb_mode_l = TRACKBALL_CURSOR;
             return false;
 
+        case TB_UD_SC_MODE_TOGGLE:
+            if (dynamic_keymap_get_keycode(3,8,0) == 0x7700) {
+                dynamic_keymap_set_keycode(3,8,0, 0x7701);
+                ud_sc_mode_flag = -1;
+            } else if (dynamic_keymap_get_keycode(3,8,0) == 0x7701) {
+                dynamic_keymap_set_keycode(3,8,0, 0x7700);
+                ud_sc_mode_flag = 1;
+            }
+            break;
+
+        case TB_LR_SC_MODE_TOGGLE:
+            if (dynamic_keymap_get_keycode(3,8,1) == 0x7700) {
+                dynamic_keymap_set_keycode(3,8,1, 0x7701);
+                lr_sc_mode_flag = -1;
+            } else if (dynamic_keymap_get_keycode(3,8,1) == 0x7701) {
+                dynamic_keymap_set_keycode(3,8,1, 0x7700);
+                lr_sc_mode_flag = 1;
+            }
+            break;
+
         case KC_DP_TOUCH_KEY:
             display_mode =  DISPLAY_MODE_TOUCH_KEY;
             draw_background_all_black();
@@ -1138,3 +1190,6 @@ void suspend_power_down_user(void){
     lcd_is_on = power_off_lcd();
     sleeping_state = true;
 };
+
+
+

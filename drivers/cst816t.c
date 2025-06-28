@@ -107,6 +107,15 @@ cst816t_XY cst816t_Get_Point() {
 }
 
 
+// add
+
+bool get_finger_present(bool prev_state) {
+    uint8_t finger;
+    if (i2c_readReg(CST816S_ADDR, 0x02, &finger, 1, 1000) == I2C_STATUS_SUCCESS) {
+        return (finger & 0x0F) != 0;   // 1→触れている, 0→離れている
+    }
+    return 0;                 // 読み取り失敗時は前回値
+}
 
 
 
